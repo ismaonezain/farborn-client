@@ -5197,14 +5197,14 @@ function equipIcon(item, size) {
   if (item.type === 'weapon' && state.hero && HERO_WEAPONS[state.hero.id]) {
     const hw = HERO_WEAPONS[state.hero.id]
     const colored = hw.svg
+    return `<img src="data:image/svg+xml,${encodeURIComponent(colored)}" width="${size}" height="${size}" style="image-rendering:auto">`
+  }
   // Use accessory visuals if accessory type
   if (item.type === "accessory" && item.typeName) {
     const accessorySvg = getAccessoryVisual(item.typeName)
     if (accessorySvg) {
       return `<img src="data:image/svg+xml,${encodeURIComponent(accessorySvg)}" width="${size}" height="${size}" style="image-rendering:auto">`
     }
-  }
-    return `<img src="data:image/svg+xml,${encodeURIComponent(colored)}" width="${size}" height="${size}" style="image-rendering:auto">`
   }
   const type = EQUIP_TYPES[item.type]
   if (type && type.svg) {
