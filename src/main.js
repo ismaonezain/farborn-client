@@ -462,9 +462,9 @@ function forgeItem(idx) {
   // Send to server
   serverApi.sendEvent('forge_upgrade', { itemId: item.id }).catch(e => console.warn('Server forge failed:', e))
 }
-function equipBonusAtk() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=state.equipped[s].atk; return b }
-function equipBonusDef() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=state.equipped[s].def; return b }
-function equipBonusHp()  { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=state.equipped[s].hp;  return b }
+function equipBonusAtk() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=(state.equipped[s].atk || 0); return b }
+function equipBonusDef() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=(state.equipped[s].def || 0); return b }
+function equipBonusHp()  { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=(state.equipped[s].hp || 0);  return b }
 
 // ─── STATE ─────────────────────────────────────────────
 const state = {
@@ -616,14 +616,14 @@ function restoreFromServer(player) {
   Object.assign(state, {
     hero: heroData, started: true, hp: player.level > 0 ? undefined : heroData.baseHp,
     level: player.level || 1, zone: player.zone || 0, gold: player.gold || 0,
-    exp: 0, maxExp: 100, totalKills: 0, zoneKills: 0,
+    exp: player.exp || 0, maxExp: 100, totalKills: player.totalKills || 0, zoneKills: player.zoneKills || 0,
     combatLog: [], floatTexts: [], particles: [],
-    upg: { atk:0, def:0, hp:0, spd:0 },
+    upg: player.upg || { atk:0, def:0, hp:0, spd:0 },
     equipped: player.equipped || { weapon:null, armor:null, shield:null, helmet:null, boots:null, ring:null, accessory:null },
     inventory: player.bag || [],
     skillCd: 0, skillReady: true, atkAnim: 0, mobHitFlash: 0, heroRecoilX: 0, mobs: [], mobDying: false, mobDeathTimer: 0, skillIdx: 0,
     nightmare: false, isBoss: false, bossKillCounter: 0, bossWarning: false, bossWarningTimer: 0,
-    prestige: 0, prestigeMult: 1
+    prestige: player.prestige || 0, prestigeMult: player.prestigeMult || 1
   });
   calcStats();
   state.hp = state.maxHp;
@@ -636,9 +636,9 @@ function restoreFromServer(player) {
 function calcStats() {
   const h = state.hero; if (!h) return
   const g = HERO_GROWTH[h.id] || { atk:2, def:1, hp:10, spd:0.02 }
-  state.baseAtk = h.baseAtk + state.upg.atk * UPGRADES.atk.amount
-  state.baseDef = h.baseDef + state.upg.def * UPGRADES.def.amount
-  state.baseHp = h.baseHp + state.upg.hp * UPGRADES.hp.amount
+  state.baseAtk = h.baseAtk + (state.upg.atk || 0) * UPGRADES.atk.amount
+  state.baseDef = h.baseDef + (state.upg.def || 0) * UPGRADES.def.amount
+  state.baseHp = h.baseHp + (state.upg.hp || 0) * UPGRADES.hp.amount
   state.maxHp = state.baseHp + Math.floor((state.level - 1) * g.hp) + equipBonusHp()
   state.attackSpeed = totalSpd()
   state.atkInterval = Math.max(0.2, 0.7 / Math.max(0.4, state.attackSpeed))
@@ -647,12 +647,12 @@ function calcStats() {
 function totalAtk() {
   const h = state.hero; if (!h) return 0
   const g = HERO_GROWTH[h.id] || { atk:2 }
-  return state.baseAtk + Math.floor(state.level * g.atk) + equipBonusAtk()
+  return (state.baseAtk || 0) + Math.floor((state.level || 1) * g.atk) + (equipBonusAtk() || 0)
 }
 function totalDef() {
   const h = state.hero; if (!h) return 0
   const g = HERO_GROWTH[h.id] || { def:1 }
-  return state.baseDef + Math.floor(state.level * g.def) + equipBonusDef()
+  return (state.baseDef || 0) + Math.floor((state.level || 1) * g.def) + (equipBonusDef() || 0)
 }
 function totalSpd() {
   const h = state.hero; if (!h) return 0
@@ -879,10 +879,10 @@ function playerAttack() {
   // Auto-dual-skill: check both skills independently
   let skill = null, isSkill = false, whichSkill = 0
   // Basic attack: single target (nearest mob)
-  let dmg = totalAtk() - Math.floor(nearest.mob.def * 0.5) + Math.floor(Math.random() * 5)
+  let dmg = (totalAtk() || 1) - Math.floor((nearest.mob.def || 0) * 0.5) + Math.floor(Math.random() * 5)
   // Crit check
   let isCrit = false
-  const critRate = (HERO_CRIT_RATE[state.hero.id] || 0.05) + (state.upg.atk * 0.003)
+  const critRate = (HERO_CRIT_RATE[state.hero.id] || 0.05) + ((state.upg.atk || 0) * 0.003)
   if (Math.random() < critRate) { dmg = Math.floor(dmg * CRIT_MULT); isCrit = true }
   // Freeze damage bonus
   if (isFrozen(nearest)) dmg = Math.floor(dmg * STATUS_EFFECTS.freeze.dmgBonus)
@@ -900,7 +900,7 @@ function playerAttack() {
     }
   }
   if (isSkill && skill) {
-    dmg = Math.floor(dmg * skill.mult)
+    dmg = Math.floor((dmg || 1) * (skill.mult || 1))
     state.floatTexts.push({ text: `${skill.emoji} ${skill.name}!`, y:canvas.height*0.32, color:'#ffd700', size:16, life:1.5, x:canvas.width/2+40 })
     addCombatLog(`Skill ${whichSkill}: ${skill.name}!`)
     // Apply status effects from skills
@@ -928,7 +928,7 @@ function playerAttack() {
       }
     }
   }
-  dmg = Math.max(1, dmg); nearest.hp -= dmg
+  dmg = Math.max(1, isNaN(dmg) ? 1 : dmg); nearest.hp -= dmg
   state.atkAnim = 20
   nearest.hitFlash = 1.0
   state.heroRecoilX = -5 * getS()
@@ -5088,7 +5088,7 @@ function renderStats() {
         <div style="background:rgba(76,175,80,0.1);border-radius:8px;padding:8px;text-align:center;">
           <div style="font-size:18px;font-weight:bold;color:#81c784;">${hp}/${maxHp}</div>
           <div style="font-size:8px;color:#aaa;">❤️ HP</div>
-          <div style="font-size:7px;color:#666;">base ${Math.floor(h.baseHp + state.upg.hp * UPGRADES.hp.amount)} + equip ${eqHp}</div>
+          <div style="font-size:7px;color:#666;">base ${Math.floor(h.baseHp + (state.upg.hp || 0) * UPGRADES.hp.amount)} + equip ${eqHp}</div>
         </div>
         <div style="background:rgba(255,215,0,0.1);border-radius:8px;padding:8px;text-align:center;">
           <div style="font-size:18px;font-weight:bold;color:#ffd700;">${(state.attackSpeed*100).toFixed(0)}%</div>
