@@ -850,8 +850,6 @@ function addExp(a) {
     updateSkillBtn()
     // Sync to server on level up — event queue handles it
     queueEvent(EVENT_TYPES.LEVEL_UP, { level: state.level, gold: state.gold, zone: state.zone });
-    // Send to server
-    serverApi.sendEvent('level_up', {}).catch(e => console.warn('Server level_up failed:', e));
   }
 }
 
@@ -1007,9 +1005,7 @@ function playerAttack() {
         if (drop) {
           state.floatTexts.push({ text: `${drop.emoji} ${drop.name}`, y:canvas.height*0.38 - di*18, color:drop.rarityColor, size:12, life:1.5, x:canvas.width/2+40 })
           addCombatLog(`Boss dropped ${drop.name}`)
-          queueEvent(EVENT_TYPES.ITEM_DROP, { item: drop, zone: state.zone, boss: true })
-          // Send to server
-          serverApi.sendEvent('item_drop', { monsterLevel: state.level, item: drop }).catch(e => console.warn('Server item_drop failed:', e))
+          // Item managed locally, synced via syncFullState — no event needed
         }
       }
       state._bossDropBoost = false
@@ -1020,9 +1016,7 @@ function playerAttack() {
         const msg = `${drop.emoji} ${drop.name} → Bag`
         state.floatTexts.push({ text: msg, y:canvas.height*0.38, color:drop.rarityColor, size:12, life:1.5, x:canvas.width/2+40 })
         addCombatLog(`Got ${drop.name}`)
-        queueEvent(EVENT_TYPES.ITEM_DROP, { item: drop, zone: state.zone, boss: false })
-        // Send to server
-        serverApi.sendEvent('item_drop', { monsterLevel: state.level, item: drop }).catch(e => console.warn('Server item_drop failed:', e))
+        // Item managed locally, synced via syncFullState — no event needed
       }
       // Check if should trigger boss next
       if (state.bossKillCounter >= 50 && !state.isBoss && !state.bossWarning) {
