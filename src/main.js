@@ -4748,9 +4748,14 @@ function renderInventory() {
       const b = parseInt(hc.substring(4,6),16)||0
       div.style.background = `rgba(${r},${g},${b},0.12)`
       const forgeStr = item.forgeLevel > 0 ? ` +${item.forgeLevel}` : ''
+      let statsStr = ''
+      if (item.atk > 0) statsStr += `<span style="color:#e53935">⚔${item.atk}</span> `
+      if (item.def > 0) statsStr += `<span style="color:#42a5f5">🛡${item.def}</span> `
+      if (item.hp > 0) statsStr += `<span style="color:#ef5350">❤${item.hp}</span> `
+      if (item.spd > 0) statsStr += `<span style="color:#ffa726">⚡${item.spd}</span> `
       div.innerHTML = `<div class="eq-emoji">${equipIcon(item, 28)}</div>
         <div class="eq-name" style="color:${item.rarityColor}">${item.name}${forgeStr}</div>
-        <div class="eq-rarity" style="color:${item.rarityColor}">${item.rarityName}</div>`
+        <div class="eq-rarity" style="color:${item.rarityColor}">${item.rarityName} ${statsStr}</div>`
       div.onclick = () => showDetail(item, 'equipped', slot)
     } else {
       div.innerHTML = `<div class="eq-emoji">${equipSlotIcon(slot, 28)}</div>
@@ -5136,7 +5141,7 @@ function renderStats() {
       <div style="font-size:9px;color:#aaa;line-height:1.6;">
         Zone: ${getZone(state.zone)?.name || '?'} (Lv.${state.level})<br>
         Gold: ${formatNum(state.gold)}G<br>
-        Kills: ${state.totalKills}<br>
+        Kills: ${state.totalKills || 0}<br>
         Zone Kills: ${state.zoneKills}/10<br>
         Weapon: ${heroWpn?.name || 'Unknown'}
       </div>
