@@ -4743,6 +4743,9 @@ function renderInventory() {
       div.style.borderColor = item.rarityColor
       // Convert hex to rgba for background
       const hc = item.rarityColor.replace('#','')
+      const r = parseInt(hc.substring(0,2),16)||0
+      const g = parseInt(hc.substring(2,4),16)||0
+      const b = parseInt(hc.substring(4,6),16)||0
       div.style.background = `rgba(${r},${g},${b},0.12)`
       const forgeStr = item.forgeLevel > 0 ? ` +${item.forgeLevel}` : ''
       div.innerHTML = `<div class="eq-emoji">${equipIcon(item, 28)}</div>
