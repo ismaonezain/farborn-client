@@ -528,11 +528,10 @@ const MOB_DETAILS = {
 function saveGame() {
   state.lastSave = Date.now();
   localStorage.setItem('farborn_save', JSON.stringify(state));
-  // Auto-sync to server every 30 seconds
+  // Auto-sync to server every 30 seconds — event queue handles equip/sell/etc
   if (isLoggedIn() && Date.now() - (state._lastServerSync || 0) > 30000) {
     state._lastServerSync = Date.now();
-    syncPlayerState(state).catch(() => {});
-    // Also do full state sync with new system
+    // Only full state sync — NO syncPlayerState (PUT blindly overwrites bag+equipped)
     syncFullState(state).catch(() => {});
   }
 }
@@ -849,8 +848,7 @@ function addExp(a) {
     addCombatLog(`Level ${state.level}!`)
     if (state.level === 8) { addCombatLog('Skill 2 unlocked!'); state.floatTexts.push({ text:'🔓 Skill 2 Unlocked!', y:canvas.height*0.25, color:'#e040fb', size:16, life:2, x:canvas.width/2 }) }
     updateSkillBtn()
-    // Sync to server on level up
-    syncPlayerState(state).catch(() => {});
+    // Sync to server on level up — event queue handles it
     queueEvent(EVENT_TYPES.LEVEL_UP, { level: state.level, gold: state.gold, zone: state.zone });
     // Send to server
     serverApi.sendEvent('level_up', {}).catch(e => console.warn('Server level_up failed:', e));
@@ -4654,8 +4652,8 @@ function startGame() {
   document.getElementById('menu-screen').style.display = 'none'
   document.getElementById('bottom-bar').style.display = 'block'
   currentLoopId++; spawnMob(); addCombatLog(`${state.hero.name} enters ${getZone(0).name}!`); gameLoop(performance.now()); saveGame()
-  // Save class to server (1 user = 1 character)
-  syncPlayerState(state).catch(() => {});
+  // Save class to server (1 user = 1 character) — use full sync, not PUT overwrite
+  syncFullState(state).catch(() => {});
 }
 
 // ─── EXPOSE TO GLOBAL (for onclick) ────────────────────
