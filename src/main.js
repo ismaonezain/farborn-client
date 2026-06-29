@@ -1137,10 +1137,12 @@ function drawPlayer() {
   const bodyTop = cy + sz * 0.48
   const bodyBot = cy + sz * 1.05
 
+  // ── ctx.save() to isolate all hero drawing ──
+  ctx.save()
   // Death animation
   if (state.heroDying) {
     const t = Math.min(1, (1.5 - (state.deathTimer || 0)) / 1.0)
-    ctx.save(); ctx.globalAlpha = 1 - t * 0.7
+    ctx.globalAlpha = 1 - t * 0.7
     ctx.translate(cx+sz/2, groundY); ctx.rotate(t * Math.PI * 0.4); ctx.translate(-(cx+sz/2), -groundY)
   }
 
@@ -2093,7 +2095,7 @@ function drawPlayer() {
     ctx.beginPath(); ctx.moveTo(cx+sz*1.2, groundY-2*s); ctx.lineTo(cx+sz*2.5, groundY-2*s); ctx.stroke(); ctx.setLineDash([])
   }
 
-  if (state.heroDying) ctx.restore()
+  ctx.restore()
 }
 
 function drawMob() {
@@ -3647,7 +3649,7 @@ function drawHeroProjectile() {
     }
   } else if (hid === 'necromancer') {
     // ─── NECROMANCER: Enhanced skull / soul drain projectile ───
-    const sz = p.isSkill ? 18 * s : 9 * s
+    const sz = p.isSkill ? 13 * s : 9 * s
     if (p.isSkill && p.skillName === 'Soul Drain') {
       // Soul Drain: Purple soul beam with ghost face
       ctx.save(); ctx.translate(p.x, p.y)
@@ -3661,10 +3663,10 @@ function drawHeroProjectile() {
       ctx.arc(sz * 0.3, -sz * 0.2, sz * 0.15, 0, Math.PI * 2)
       ctx.fill()
       // Energy trail
-      for (let i = 0; i < 6; i++) {
-        const tx = -(p.tx - p.x) * i * 0.05 + Math.sin(p.age * 0.3 + i * 1.5) * 4 * s
+      for (let i = 0; i < 4; i++) {
+        const tx = -(p.tx - p.x) * i * 0.05 + Math.sin(p.age * 0.3 + i * 1.5) * 3 * s
         const ty = -(p.ty - p.y) * i * 0.05 + Math.cos(p.age * 0.4 + i) * 3 * s
-        ctx.globalAlpha = 0.4 - i * 0.05
+        ctx.globalAlpha = 0.3 - i * 0.06
         ctx.fillStyle = i % 2 === 0 ? '#e040fb' : '#9c27b0'
         ctx.beginPath(); ctx.arc(tx, ty, (sz * 0.4 - i * 0.3) * s, 0, Math.PI * 2); ctx.fill()
       }
@@ -3673,7 +3675,7 @@ function drawHeroProjectile() {
     } else {
       // Death Coil / normal: Enhanced green skull with ghost trail
       // Dark aura
-      ctx.globalAlpha = 0.3
+      ctx.globalAlpha = 0.15
       const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, sz * 2)
       grad.addColorStop(0, 'rgba(0,230,118,0.5)')
       grad.addColorStop(0.5, 'rgba(0,100,50,0.2)')
@@ -3704,26 +3706,14 @@ function drawHeroProjectile() {
         ctx.fillRect(p.x + i * sz * 0.15 - sz * 0.04, p.y + sz * 0.05, sz * 0.08, sz * 0.12)
       }
       // Enhanced green spirit trail
-      for (let i = 0; i < (p.isSkill ? 10 : 5); i++) {
+      for (let i = 0; i < 3; i++) {
         const tx = p.x - (p.tx - p.x) * i * 0.05 + Math.sin(p.age * 0.3 + i * 1.5) * 5 * s
         const ty = p.y - (p.ty - p.y) * i * 0.05 + Math.cos(p.age * 0.4 + i) * 4 * s
-        ctx.globalAlpha = 0.5 - i * 0.05
+        ctx.globalAlpha = 0.4 - i * 0.06
         ctx.fillStyle = i % 2 === 0 ? '#00e676' : '#1b5e20'
         ctx.beginPath(); ctx.arc(tx, ty, (sz * 0.5 - i) * s, 0, Math.PI * 2); ctx.fill()
       }
       ctx.globalAlpha = 1
-      if (p.isSkill) {
-        // Skill: orbiting green souls
-        for (let i = 0; i < 3; i++) {
-          const oa = p.age * 0.15 + i * Math.PI * 0.66
-          const ox = p.x + Math.cos(oa) * sz * 1.3
-          const oy = p.y + Math.sin(oa) * sz * 1.3
-          ctx.fillStyle = '#00e676'
-          ctx.beginPath(); ctx.arc(ox, oy, 3 * s, 0, Math.PI * 2); ctx.fill()
-          ctx.fillStyle = '#fff'
-          ctx.beginPath(); ctx.arc(ox, oy, 1.5 * s, 0, Math.PI * 2); ctx.fill()
-        }
-      }
     }
   } else {
     // Fallback: generic orb
