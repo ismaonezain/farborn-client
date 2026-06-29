@@ -5392,12 +5392,12 @@ async function onStartGame() {
   const statusEl = document.getElementById('gate-status');
   const startBtn = document.getElementById('gate-start-btn');
   
-  // Safety: 20s max for entire flow (accommodates retry on Vercel cold start)
+  // Safety: 15s max for entire flow
   const overallTimeout = setTimeout(() => {
     console.error('⏰ onStartGame overall timeout');
     if (statusEl) { statusEl.innerHTML = '❌ Timeout — server may be slow'; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '14px'; }
     if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
-  }, 20000);
+  }, 15000);
 
   try {
     if (startBtn) { startBtn.disabled = true; startBtn.textContent = '⏳ Connecting...'; }

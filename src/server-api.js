@@ -58,12 +58,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   }
   
   try {
-    // 10s timeout — prevents hanging on Vercel cold starts
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    config.signal = controller.signal;
     const response = await fetch(`${SERVER_URL}${endpoint}`, config);
-    clearTimeout(timeoutId);
     const data = await response.json();
     
     if (!response.ok) {
