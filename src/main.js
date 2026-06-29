@@ -614,11 +614,16 @@ function restoreFromServer(player) {
     heroData.name = player.hero_name || heroData.name;
   }
   Object.assign(state, {
-    hero: heroData, started: true, hp: player.level > 0 ? undefined : heroData.baseHp,
+    hero: heroData, started: true, hp: heroData.baseHp,
     level: player.level || 1, zone: player.zone || 0, gold: player.gold || 0,
     exp: player.exp || 0, maxExp: 100, totalKills: player.totalKills || 0, zoneKills: player.zoneKills || 0,
     combatLog: [], floatTexts: [], particles: [],
-    upg: player.upg || { atk:0, def:0, hp:0, spd:0 },
+    upg: {
+      atk: (player.upg && player.upg.atk) || 0,
+      def: (player.upg && player.upg.def) || 0,
+      hp: (player.upg && player.upg.hp) || 0,
+      spd: (player.upg && player.upg.spd) || 0
+    },
     equipped: player.equipped || { weapon:null, armor:null, shield:null, helmet:null, boots:null, ring:null, accessory:null },
     inventory: player.bag || [],
     skillCd: 0, skillReady: true, atkAnim: 0, mobHitFlash: 0, heroRecoilX: 0, mobs: [], mobDying: false, mobDeathTimer: 0, skillIdx: 0,
@@ -668,7 +673,7 @@ function autoUpgrade() {
   for (let i = 0; i < stats.length; i++) {
     const key = stats[i]
     const u = UPGRADES[key]
-    state.upg[key]++
+    state.upg[key] = (state.upg[key] || 0) + 1
     calcStats()
     if (key === 'hp') state.hp = Math.min(state.hp + u.amount, state.maxHp)
     // stagger float texts vertically
@@ -1109,7 +1114,7 @@ function updateHUD() {
   if (potMd) potMd.textContent = `⚗️${state.potions.medium}`
   if (potLg) potLg.textContent = `💊${state.potions.large}`
   // Update auto-upgrade display
-  const upgLv = (id, key) => { const el = document.getElementById(id); if (el) el.textContent = state.upg[key] }
+  const upgLv = (id, key) => { const el = document.getElementById(id); if (el) el.textContent = state.upg[key] || 0 }
   upgLv('upg-atk-lv', 'atk'); upgLv('upg-def-lv', 'def')
   upgLv('upg-hp-lv', 'hp')
 }
@@ -5100,9 +5105,9 @@ function renderStats() {
     <div style="background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:10px;padding:10px;margin-bottom:8px;">
       <div style="font-size:10px;color:#888;margin-bottom:6px;">📈 UPGRADES</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;">
-        <div style="color:#aaa;">⚔️ ATK Lv.${state.upg.atk}</div>
-        <div style="color:#aaa;">🛡️ DEF Lv.${state.upg.def}</div>
-        <div style="color:#aaa;">❤️ HP Lv.${state.upg.hp}</div>
+        <div style="color:#aaa;">⚔️ ATK Lv.${state.upg.atk || 0}</div>
+        <div style="color:#aaa;">🛡️ DEF Lv.${state.upg.def || 0}</div>
+        <div style="color:#aaa;">❤️ HP Lv.${state.upg.hp || 0}</div>
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:10px;padding:10px;margin-bottom:8px;">
@@ -5131,7 +5136,7 @@ function renderStats() {
       <div style="font-size:9px;color:#aaa;line-height:1.6;">
         Zone: ${getZone(state.zone)?.name || '?'} (Lv.${state.level})<br>
         Gold: ${formatNum(state.gold)}G<br>
-        Kills: ${state.kills}<br>
+        Kills: ${state.totalKills}<br>
         Zone Kills: ${state.zoneKills}/10<br>
         Weapon: ${heroWpn?.name || 'Unknown'}
       </div>
