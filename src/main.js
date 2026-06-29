@@ -525,14 +525,19 @@ const MOB_DETAILS = {
 }
 
 // ─── SAVE / LOAD ───────────────────────────────────────
+let _firstSyncDone = false;
 function saveGame() {
   state.lastSave = Date.now();
   localStorage.setItem('farborn_save', JSON.stringify(state));
-  // Auto-sync to server every 30 seconds — event queue handles equip/sell/etc
-  if (isLoggedIn() && Date.now() - (state._lastServerSync || 0) > 30000) {
-    state._lastServerSync = Date.now();
-    // Only full state sync — NO syncPlayerState (PUT blindly overwrites bag+equipped)
-    syncFullState(state).catch(() => {});
+  // Auto-sync to server — 10s interval + immediate first sync
+  if (isLoggedIn()) {
+    const now = Date.now();
+    const interval = _firstSyncDone ? 10000 : 0; // immediate on first, then 10s
+    if (now - (state._lastServerSync || 0) > interval) {
+      state._lastServerSync = now;
+      _firstSyncDone = true;
+      syncFullState(state).catch(() => {});
+    }
   }
 }
 function loadGame() {
@@ -3478,6 +3483,7 @@ function drawBackground() {
 
 function drawHeroProjectile() {
   if (!state.heroProjectile) return
+  ctx.save() // isolate alpha/translate leaks
   const p = state.heroProjectile, s = getS()
   const angle = Math.atan2(p.ty - p.y, p.tx - p.x)
   p.age = (p.age || 0) + 1
@@ -3726,6 +3732,7 @@ function drawHeroProjectile() {
     ctx.fillStyle = '#fff'
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.5 * s, 0, Math.PI * 2); ctx.fill()
   }
+  ctx.restore()
 }
 
 function drawMobProjectile() {
@@ -3790,6 +3797,8 @@ function drawMeleeSkillFx() {
   const hid = fx.heroId
   const skillName = fx.skillName
   const cx = fx.x, cy = fx.y
+  // Save full context state to prevent alpha/translate leaks into background
+  ctx.save()
 
   // Screen flash at start (brief white overlay)
   if (p < 0.15) {
@@ -4361,6 +4370,7 @@ function drawMeleeSkillFx() {
     }
   }
   ctx.globalAlpha = 1
+  ctx.restore()
 }
 
 function draw() { 
