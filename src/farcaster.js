@@ -81,11 +81,11 @@ export async function login() {
   try {
     let quickAuthToken = null;
 
-    // Get Quick Auth token from SDK (2s max)
+    // Get Quick Auth token from SDK (3s max — generous for cold SDK init)
     if (sdk) {
       try {
         const authPromise = sdk.quickAuth.getToken();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
         const { token: qt } = await Promise.race([authPromise, timeoutPromise]);
         quickAuthToken = qt;
         console.log('🔑 Quick Auth token');
@@ -131,18 +131,35 @@ export async function login() {
       authPayload.quickAuthToken = quickAuthToken;
     }
 
-    // Use server-api login function with token
-    const data = await serverApi.loginWithToken(farcasterUser.fid, farcasterUser.username, walletAddress, quickAuthToken);
-    
-    if (data.token) {
-      loginToken = data.token;
-      serverApi.setAuthToken(data.token);
-      localStorage.setItem('farborn_auth_token', loginToken);
-      localStorage.setItem('farborn_auth_expires', data.expiresAt);
-      localStorage.setItem('farborn_wallet', walletAddress);
-      return { success: true, player: data.player };
+    // Retry login up to 2x with backoff (Vercel cold start fix)
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`🔄 Login retry ${attempt}...`);
+          await new Promise(r => setTimeout(r, 1500 * attempt));
+        }
+        const data = await serverApi.loginWithToken(farcasterUser.fid, farcasterUser.username, walletAddress, quickAuthToken);
+        
+        if (data.token) {
+          loginToken = data.token;
+          serverApi.setAuthToken(data.token);
+          localStorage.setItem('farborn_auth_token', loginToken);
+          localStorage.setItem('farborn_auth_expires', data.expiresAt);
+          localStorage.setItem('farborn_wallet', walletAddress);
+          return { success: true, player: data.player };
+        }
+        // Server returned error (not network) — don't retry
+        return data;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`⚠️ Login attempt ${attempt + 1} failed:`, e.message);
+      }
     }
-    return data;
+
+    // All retries exhausted
+    console.error('Login failed after retries:', lastErr);
+    return { error: 'Network error — server may be offline' };
   } catch (err) {
     console.error('Login failed:', err);
     return { error: 'Network error — server may be offline' };
