@@ -80,11 +80,12 @@ export async function login() {
 
   try {
     let quickAuthToken = null;
-
-    // Get Quick Auth token from SDK (no timeout — let user see real errors)
+    // Get Quick Auth token from SDK (3s max — prevent SDK hang)
     if (sdk) {
       try {
-        const { token: qt } = await sdk.quickAuth.getToken();
+        const authPromise = sdk.quickAuth.getToken();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Quick Auth timeout')), 3000));
+        const { token: qt } = await Promise.race([authPromise, timeoutPromise]);
         quickAuthToken = qt;
         console.log('🔑 Quick Auth token');
 
@@ -105,7 +106,7 @@ export async function login() {
           console.log(`👤 @${farcasterUser.username} (FID: ${farcasterUser.fid})`);
         }
       } catch (e) {
-        console.log('⚠️ Quick Auth error:', e.message);
+        console.warn('⚠️ Quick Auth error:', e.message);
       }
     }
 
@@ -119,31 +120,38 @@ export async function login() {
       isFarcasterUser = false;
     }
 
-    let authPayload = {
-      fid: farcasterUser.fid,
-      username: farcasterUser.username,
-      wallet: walletAddress
-    };
-
-    if (quickAuthToken) {
-      authPayload.quickAuthToken = quickAuthToken;
+    // Retry login 2x — Vercel cold start fix
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`🔄 Login retry ${attempt}...`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        const data = await serverApi.loginWithToken(farcasterUser.fid, farcasterUser.username, walletAddress, quickAuthToken);
+        
+        if (data.token) {
+          loginToken = data.token;
+          serverApi.setAuthToken(data.token);
+          localStorage.setItem('farborn_auth_token', loginToken);
+          localStorage.setItem('farborn_auth_expires', data.expiresAt);
+          localStorage.setItem('farborn_wallet', walletAddress);
+          return { success: true, player: data.player };
+        }
+        // Server returned error object (not network) — pass through
+        return data;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`⚠️ Login attempt ${attempt + 1} failed:`, e.message);
+      }
     }
 
-    // Login — single attempt, no retry (debug mode)
-    const data = await serverApi.loginWithToken(farcasterUser.fid, farcasterUser.username, walletAddress, quickAuthToken);
-    
-    if (data.token) {
-      loginToken = data.token;
-      serverApi.setAuthToken(data.token);
-      localStorage.setItem('farborn_auth_token', loginToken);
-      localStorage.setItem('farborn_auth_expires', data.expiresAt);
-      localStorage.setItem('farborn_wallet', walletAddress);
-      return { success: true, player: data.player };
-    }
-    return data;
+    // All retries exhausted
+    console.error('Login failed after retries:', lastErr);
+    return { error: lastErr?.message || 'Network error — server may be offline' };
   } catch (err) {
     console.error('Login failed:', err);
-    return { error: 'Network error — server may be offline' };
+    return { error: err?.message || 'Network error — server may be offline' };
   }
 }
 

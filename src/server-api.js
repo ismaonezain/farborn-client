@@ -58,7 +58,11 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   }
   
   try {
-    const response = await fetch(`${SERVER_URL}${endpoint}`, config);
+    // 10s timeout — prevent hanging on cold starts
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(`${SERVER_URL}${endpoint}`, { ...config, signal: controller.signal });
+    clearTimeout(tid);
     const data = await response.json();
     
     if (!response.ok) {
