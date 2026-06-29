@@ -286,7 +286,7 @@ const ACC_TYPES = {
 const FORGE_RATE = { 1:1.0, 2:0.95, 3:0.90, 4:0.85, 5:0.80, 6:0.70, 7:0.60, 8:0.45, 9:0.30, 10:0.20, 11:0.10, 12:0.05 }
 // Forge cost per level
 const FORGE_COST = [0,10,20,35,55,80,120,170,250,350,500,700,1000]
-const EQUIP_ZONE_TYPES = [['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory']],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory']]
+const EQUIP_ZONE_TYPES = [['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory'],['weapon','armor','helmet','boots','shield','ring','accessory']]
 const INVENTORY_MAX = 96
 
 function generateEquip(zone) {
@@ -4740,17 +4740,7 @@ function renderInventory() {
     if (item) {
       div.style.borderColor = item.rarityColor
       // Convert hex to rgba for background
-      const hc = item.rarityColor.const RARITIES = {
-  common:    { name:'Common',    color:'#aaa',     dropRate:0.45,  statMul:1.0 },
-  uncommon:  { name:'Uncommon',  color:'#4caf50', dropRate:0.30,  statMul:1.3 },
-  rare:      { name:'Rare',      color:'#2196f3', dropRate:0.15,  statMul:1.8 },
-  epic:      { name:'Epic',      color:'#9c27b0', dropRate:0.05,  statMul:2.8 },
-  legendary: { name:'Legendary', color:'#ff9800', dropRate:0.02,  statMul:4.5 },
-  mythic:    { name:'Mythic',    color:'#f44336', dropRate:0.005, statMul:7.0 },
-  immortal:  { name:'Immortal',  color:'#e0e0e0', dropRate:0.001, statMul:11.0 },
-  archgod:   { name:'Archgod',   color:'#ff6f00', dropRate:0.0001,statMul:18.0 }
-}('#','')
-      const r = parseInt(hc.substring(0,2),16), g = parseInt(hc.substring(2,4),16), b = parseInt(hc.substring(4,6),16)
+      const hc = item.rarityColor.replace('#','')
       div.style.background = `rgba(${r},${g},${b},0.12)`
       const forgeStr = item.forgeLevel > 0 ? ` +${item.forgeLevel}` : ''
       div.innerHTML = `<div class="eq-emoji">${equipIcon(item, 28)}</div>
@@ -5203,48 +5193,19 @@ function equipIcon(item, size) {
   // Use hero-specific weapon SVG if weapon type
   if (item.type === 'weapon' && state.hero && HERO_WEAPONS[state.hero.id]) {
     const hw = HERO_WEAPONS[state.hero.id]
-    const colored = hw.svg.const RARITIES = {
-  common:    { name:'Common',    color:'#aaa',     dropRate:0.45,  statMul:1.0 },
-  uncommon:  { name:'Uncommon',  color:'#4caf50', dropRate:0.30,  statMul:1.3 },
-  rare:      { name:'Rare',      color:'#2196f3', dropRate:0.15,  statMul:1.8 },
-  epic:      { name:'Epic',      color:'#9c27b0', dropRate:0.05,  statMul:2.8 },
-  legendary: { name:'Legendary', color:'#ff9800', dropRate:0.02,  statMul:4.5 },
-  mythic:    { name:'Mythic',    color:'#f44336', dropRate:0.005, statMul:7.0 },
-  immortal:  { name:'Immortal',  color:'#e0e0e0', dropRate:0.001, statMul:11.0 },
-  archgod:   { name:'Archgod',   color:'#ff6f00', dropRate:0.0001,statMul:18.0 }
-}(/#FFD700/g, item.rarityColor).const RARITIES = {
-  common:    { name:'Common',    color:'#aaa',     dropRate:0.45,  statMul:1.0 },
-  uncommon:  { name:'Uncommon',  color:'#4caf50', dropRate:0.30,  statMul:1.3 },
-  rare:      { name:'Rare',      color:'#2196f3', dropRate:0.15,  statMul:1.8 },
-  epic:      { name:'Epic',      color:'#9c27b0', dropRate:0.05,  statMul:2.8 },
-  legendary: { name:'Legendary', color:'#ff9800', dropRate:0.02,  statMul:4.5 },
-  mythic:    { name:'Mythic',    color:'#f44336', dropRate:0.005, statMul:7.0 },
-  immortal:  { name:'Immortal',  color:'#e0e0e0', dropRate:0.001, statMul:11.0 },
-  archgod:   { name:'Archgod',   color:'#ff6f00', dropRate:0.0001,statMul:18.0 }
-}(/url\(#/g, `url(#${item.type}_`)
+    const colored = hw.svg
+  // Use accessory visuals if accessory type
+  if (item.type === "accessory" && item.typeName) {
+    const accessorySvg = getAccessoryVisual(item.typeName)
+    if (accessorySvg) {
+      return `<img src="data:image/svg+xml,${encodeURIComponent(accessorySvg)}" width="${size}" height="${size}" style="image-rendering:auto">`
+    }
+  }
     return `<img src="data:image/svg+xml,${encodeURIComponent(colored)}" width="${size}" height="${size}" style="image-rendering:auto">`
   }
   const type = EQUIP_TYPES[item.type]
   if (type && type.svg) {
-    const colored = type.svg.const RARITIES = {
-  common:    { name:'Common',    color:'#aaa',     dropRate:0.45,  statMul:1.0 },
-  uncommon:  { name:'Uncommon',  color:'#4caf50', dropRate:0.30,  statMul:1.3 },
-  rare:      { name:'Rare',      color:'#2196f3', dropRate:0.15,  statMul:1.8 },
-  epic:      { name:'Epic',      color:'#9c27b0', dropRate:0.05,  statMul:2.8 },
-  legendary: { name:'Legendary', color:'#ff9800', dropRate:0.02,  statMul:4.5 },
-  mythic:    { name:'Mythic',    color:'#f44336', dropRate:0.005, statMul:7.0 },
-  immortal:  { name:'Immortal',  color:'#e0e0e0', dropRate:0.001, statMul:11.0 },
-  archgod:   { name:'Archgod',   color:'#ff6f00', dropRate:0.0001,statMul:18.0 }
-}(/#FFD700/g, item.rarityColor).const RARITIES = {
-  common:    { name:'Common',    color:'#aaa',     dropRate:0.45,  statMul:1.0 },
-  uncommon:  { name:'Uncommon',  color:'#4caf50', dropRate:0.30,  statMul:1.3 },
-  rare:      { name:'Rare',      color:'#2196f3', dropRate:0.15,  statMul:1.8 },
-  epic:      { name:'Epic',      color:'#9c27b0', dropRate:0.05,  statMul:2.8 },
-  legendary: { name:'Legendary', color:'#ff9800', dropRate:0.02,  statMul:4.5 },
-  mythic:    { name:'Mythic',    color:'#f44336', dropRate:0.005, statMul:7.0 },
-  immortal:  { name:'Immortal',  color:'#e0e0e0', dropRate:0.001, statMul:11.0 },
-  archgod:   { name:'Archgod',   color:'#ff6f00', dropRate:0.0001,statMul:18.0 }
-}(/url\(#/g, `url(#${item.type}_`)
+    const colored = type.svg
     return `<img src="data:image/svg+xml,${encodeURIComponent(colored)}" width="${size}" height="${size}" style="image-rendering:auto">`
   }
   return `<span style="font-size:${size}px">${item.emoji || type?.emoji || '?'}</span>`
@@ -5338,6 +5299,7 @@ window.toggleNightmare = toggleNightmare
 import { initFarcaster, connectWallet, login, checkTokenGate, fetchPrices, convertGold, syncPlayerState, getUser, getWallet, getGateStatus, isLoggedIn, checkStoredAuth, getSDK, isRealFarcasterUser } from './farcaster.js';
 import { queueEvent, initSync, syncFullState, getServerState, mergeStates, EVENT_TYPES } from './sync.js';
 import * as serverApi from './server-api.js';
+import { ACCESSORY_VISUALS, getAccessoryVisual, getAccessoryRarityColor } from './accessory-visuals.js';
 
 // ─── FARCASTER GATE FLOW ────────────────────────────────
 let fcReady = false;
