@@ -103,6 +103,8 @@ export async function login() {
             displayName: username || '',
           };
           isFarcasterUser = true;
+          // Persist FID so it stays consistent if Quick Auth fails next time
+          localStorage.setItem('farborn_fid', fid);
           console.log(`👤 @${farcasterUser.username} (FID: ${farcasterUser.fid})`);
         }
       } catch (e) {
@@ -110,14 +112,25 @@ export async function login() {
       }
     }
 
-    // Fallback mock user if no FC user resolved
+    // Fallback: use persisted FID from previous successful Quick Auth
     if (!farcasterUser) {
-      farcasterUser = {
-        fid: parseInt(walletAddress.slice(2, 10), 16),
-        username: 'player',
-        displayName: 'Player'
-      };
-      isFarcasterUser = false;
+      const persistedFid = parseInt(localStorage.getItem('farborn_fid'), 10);
+      if (persistedFid) {
+        farcasterUser = {
+          fid: persistedFid,
+          username: 'player',
+          displayName: 'Player'
+        };
+        isFarcasterUser = true;
+        console.log(`👤 Using persisted FID: ${persistedFid}`);
+      } else {
+        farcasterUser = {
+          fid: parseInt(walletAddress.slice(2, 10), 16),
+          username: 'player',
+          displayName: 'Player'
+        };
+        isFarcasterUser = false;
+      }
     }
 
     // Retry login 2x — Vercel cold start fix
