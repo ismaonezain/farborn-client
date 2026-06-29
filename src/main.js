@@ -376,15 +376,36 @@ function equipItem(idx) {
   calcStats(); addCombatLog(`Equipped ${item.name}`)
   state.floatTexts.push({text:`${item.emoji} Equipped!`, y:canvas.height*0.35, color:item.rarityColor, size:14, life:1.2, x:canvas.width/2+40})
   queueEvent(EVENT_TYPES.ITEM_EQUIP, { item, slot: item.slot, old })
-  // Send to server
-  serverApi.sendEvent('item_equip', { itemId: item.id }).catch(e => console.warn('Server equip failed:', e))
+  // Server-authoritative equip
+  sendEquipRequest(item.id).then(result => {
+    if (result && result.error) {
+      console.warn('Server equip rejected:', result.error);
+      // Revert local state if server rejected
+      state.equipped[item.slot] = old;
+      state.inventory.splice(idx, 0, item);
+      if (old) state.inventory.pop();
+      calcStats();
+    } else if (result && result.equipped) {
+      // Apply server-authoritative equipped state
+      state.equipped = { ...state.equipped, ...result.equipped };
+      if (result.stats) Object.assign(state, result.stats);
+      calcStats();
+    }
+  }).catch(e => console.warn('Server equip failed:', e));
 }
 function unequipItem(slot) {
   const item = state.equipped[slot]; if (!item || state.inventory.length >= INVENTORY_MAX) return
   state.inventory.push(item); state.equipped[slot] = null; calcStats()
   queueEvent(EVENT_TYPES.ITEM_UNEQUIP, { item, slot })
-  // Send to server
-  serverApi.sendEvent('item_unequip', { itemId: item.id }).catch(e => console.warn('Server unequip failed:', e))
+  // Server-authoritative unequip
+  sendUnequipRequest(item.id).then(result => {
+    if (result && result.error) {
+      console.warn('Server unequip rejected:', result.error);
+    } else if (result && result.equipped) {
+      state.equipped = { ...state.equipped, ...result.equipped };
+      calcStats();
+    }
+  }).catch(e => console.warn('Server unequip failed:', e));
 }
 function autoEquipAll() {
   let equipped = 0
@@ -419,8 +440,17 @@ function sellItem(idx) {
   addCombatLog(`Sold ${item.name} +${val}G`)
   state.floatTexts.push({text:`+${val}G`, y:canvas.height*0.42, color:'#ffd700', size:14, life:1, x:canvas.width/2+40})
   queueEvent(EVENT_TYPES.ITEM_SELL, { item, gold: val, totalGold: state.gold })
-  // Send to server
-  serverApi.sendEvent('item_sell', { itemId: item.id }).catch(e => console.warn('Server sell failed:', e))
+  // Server-authoritative sell
+  sendSellRequest(item.id).then(result => {
+    if (result && result.error) {
+      console.warn('Server sell rejected:', result.error);
+      // Revert if server rejected
+      state.gold -= val;
+      state.inventory.splice(idx, 0, item);
+    } else if (result && result.gold !== undefined) {
+      state.gold = result.gold;
+    }
+  }).catch(e => console.warn('Server sell failed:', e));
 }
 function forgeItem(idx) {
   const item = state.inventory[idx]; if (!item) return
@@ -459,8 +489,25 @@ function forgeItem(idx) {
     }
   }
   calcStats()
-  // Send to server
-  serverApi.sendEvent('forge_upgrade', { itemId: item.id }).catch(e => console.warn('Server forge failed:', e))
+  // Server-authoritative forge
+  sendForgeRequest(item.id).then(result => {
+    if (result && result.error) {
+      console.warn('Server forge rejected:', result.error);
+    } else if (result && result.item) {
+      // Apply server-authoritative item state
+      const serverItem = result.item;
+      item.forgeLevel = serverItem.forgeLevel;
+      item.atk = serverItem.atk;
+      item.def = serverItem.def;
+      item.hp = serverItem.hp;
+      item.spd = serverItem.spd;
+      if (result.destroyed) {
+        const idx2 = state.inventory.indexOf(item);
+        if (idx2 >= 0) state.inventory.splice(idx2, 1);
+      }
+      calcStats();
+    }
+  }).catch(e => console.warn('Server forge failed:', e));
 }
 function equipBonusAtk() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=(state.equipped[s].atk || 0); return b }
 function equipBonusDef() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=(state.equipped[s].def || 0); return b }
@@ -1044,6 +1091,35 @@ function playerAttack() {
     // Sync primary mob refs (gameLoop will handle splice after deathTimer)
     syncPrimaryMobRefs()
   }
+  // Server-authoritative combat tick — send intent, apply server results
+  // All visual code above runs immediately; server reconciles authoritative state
+  sendCombatTick(state.zone).then(result => {
+    if (!result || result.error) return;
+    // Apply server-authoritative gold/exp/kills
+    if (result.gold !== undefined) state.gold = result.gold;
+    if (result.exp !== undefined) { state.exp = result.exp; /* check level up server-side */ }
+    if (result.level !== undefined && result.level > state.level) {
+      state.level = result.level;
+      state.maxExp = result.maxExp || Math.floor(state.maxExp * 1.2);
+      calcStats();
+    }
+    if (result.totalKills !== undefined) state.totalKills = result.totalKills;
+    if (result.zoneKills !== undefined) state.zoneKills = result.zoneKills;
+    // Server may override mob HP for anti-cheat
+    if (result.mobHp !== undefined && nearest) {
+      nearest.hp = result.mobHp;
+    }
+    // Server may send drops
+    if (result.drops && Array.isArray(result.drops)) {
+      for (const drop of result.drops) {
+        if (drop && drop.id && !state.inventory.find(i => i.id === drop.id)) {
+          state.inventory.push(drop);
+          state.floatTexts.push({ text: `${drop.emoji || '📦'} ${drop.name}`, y:canvas.height*0.38, color:drop.rarityColor || '#ffd700', size:12, life:1.5, x:canvas.width/2+40 });
+          addCombatLog(`Got ${drop.name}`);
+        }
+      }
+    }
+  }).catch(() => {});
 }
 
 function mobAttack() {
@@ -1088,6 +1164,18 @@ function mobAttack() {
       break // hero dead, stop other mobs
     }
   }
+  // Server-authoritative HP reconciliation — mob damage may differ from local calc
+  // This fires after all local visual effects are applied
+  sendCombatTick(state.zone).then(result => {
+    if (!result || result.error) return;
+    if (result.hp !== undefined) state.hp = result.hp;
+    if (result.heroDying) { state.heroDying = true; state.deathTimer = 1.5; }
+    if (result.mobHp !== undefined && state.mobs.length > 0) {
+      // Reconcile mob HP with server
+      const primary = state.mobs[0];
+      if (primary) primary.hp = result.mobHp;
+    }
+  }).catch(() => {});
 }
 
 // Prestige removed
@@ -1214,7 +1302,7 @@ function drawPlayer() {
     ctx.fill()
     ctx.globalAlpha = 1
     // Wings (based on rarity tier)
-    if (['rare','epic','legendary','mythic','divine','celestial','transcendent','archgod'].includes(accRarity)) {
+    if (['rare','epic','legendary','mythic','immortal','celestial','transcendent','archgod'].includes(accRarity)) {
       ctx.save()
       ctx.globalAlpha = 0.7 + Math.sin(t * 3) * 0.2
       // Left wing
@@ -1329,7 +1417,7 @@ function drawPlayer() {
     ctx.fill()
     ctx.globalAlpha = 1
     // Weapon glow for rare+
-    if (eqWpn && ['rare','epic','legendary','mythic','divine','celestial','transcendent','archgod'].includes(eqWpn.rarity)) {
+    if (eqWpn && ['rare','epic','legendary','mythic','immortal','celestial','transcendent','archgod'].includes(eqWpn.rarity)) {
       ctx.globalAlpha = 0.25 + Math.sin(t*3)*0.1
       ctx.fillStyle = wpnColor
       ctx.beginPath(); ctx.ellipse(0, sl*0.5, sz*0.12, sl*0.6, 0, 0, Math.PI*2); ctx.fill()
@@ -5162,8 +5250,14 @@ function goToZone(idx) {
   state.floatTexts.push({ text: `→ ${zn.name}`, y:canvas.height*0.25, color:'#00bcd4', size:18, life:2, x:canvas.width/2 })
   document.getElementById('zone-panel').style.display = 'none'
   queueEvent(EVENT_TYPES.ZONE_CHANGE, { zone: idx, name: zn.name })
-  // Send to server
-  serverApi.sendEvent('zone_change', { zone: idx }).catch(e => console.warn('Server zone_change failed:', e))
+  // Server-authoritative zone change
+  sendZoneChange(idx).then(result => {
+    if (result && result.error) {
+      console.warn('Server zone change rejected:', result.error);
+    } else if (result && result.zone !== undefined) {
+      state.zone = result.zone;
+    }
+  }).catch(e => console.warn('Server zone_change failed:', e))
   state.mob = null; state.inCombat = false
   setTimeout(spawnMob, 300)
   saveGame()
@@ -5302,7 +5396,7 @@ window.toggleNightmare = toggleNightmare
 
 // ─── INIT ──────────────────────────────────────────────
 import { initFarcaster, connectWallet, login, checkTokenGate, fetchPrices, convertGold, syncPlayerState, getUser, getWallet, getGateStatus, isLoggedIn, checkStoredAuth, getSDK, isRealFarcasterUser } from './farcaster.js';
-import { queueEvent, initSync, syncFullState, getServerState, mergeStates, EVENT_TYPES } from './sync.js';
+import { queueEvent, initSync, syncFullState, getServerState, mergeStates, EVENT_TYPES, sendCombatTick, sendEquipRequest, sendUnequipRequest, sendSellRequest, sendForgeRequest, sendZoneChange, sendStatUpgrade, checkOfflineProgress } from './sync.js';
 import * as serverApi from './server-api.js';
 import { ACCESSORY_VISUALS, getAccessoryVisual, getAccessoryRarityColor } from './accessory-visuals.js';
 
@@ -5406,6 +5500,21 @@ async function onStartGame() {
     if (authToken) {
       initSync(authToken);
       console.log('✅ Sync system initialized');
+      // Check offline progress (once per login)
+      checkOfflineProgress().then(offline => {
+        if (offline && (offline.expGained > 0 || offline.goldGained > 0)) {
+          // Show offline rewards modal
+          const duration = offline.duration || 0;
+          const hrs = Math.floor(duration / 3600);
+          const mins = Math.floor((duration % 3600) / 60);
+          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+          state.floatTexts.push({ text: `💤 Offline ${timeStr}: +${offline.goldGained}G +${offline.expGained}EXP`, y:canvas.height*0.2, color:'#ffd700', size:16, life:3, x:canvas.width/2 });
+          addCombatLog(`💤 Offline rewards: +${offline.goldGained}G +${offline.expGained}EXP (${timeStr})`);
+          // Apply offline rewards
+          state.gold = (state.gold || 0) + offline.goldGained;
+          state.exp = (state.exp || 0) + offline.expGained;
+        }
+      }).catch(() => {});
     }
 
     // Step 2: Check if player already has a character on server

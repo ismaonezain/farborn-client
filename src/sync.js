@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-//  EVENT QUEUE — Local-first sync with server
+//  Farborn Sync — Server-authoritative intent system
 // ═══════════════════════════════════════════════════════════
 
 const QUEUE_KEY = 'farborn_event_queue';
@@ -9,29 +9,7 @@ let eventQueue = [];
 let isSyncing = false;
 let syncToken = null;
 
-// ─── Queue Management ────────────────────────────────────
-export function loadQueue() {
-  try {
-    const saved = localStorage.getItem(QUEUE_KEY);
-    if (saved) eventQueue = JSON.parse(saved);
-  } catch { eventQueue = []; }
-}
-
-export function saveQueue() {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(eventQueue));
-}
-
-export function clearQueue() {
-  eventQueue = [];
-  saveQueue();
-}
-
-export function getQueueLength() {
-  return eventQueue.length;
-}
-
-// ─── Event Types ─────────────────────────────────────────
-// These are the state-changing events we track
+// ─── Intent Event Types (send to server, receive results) ─
 export const EVENT_TYPES = {
   // Economy
   GOLD_CHANGE: 'gold_change',
@@ -57,7 +35,198 @@ export const EVENT_TYPES = {
   FULL_STATE: 'full_state',
 };
 
-// ─── Queue Event ─────────────────────────────────────────
+// ─── Server-Authoritative Intent Types ───────────────────
+// These are INTENTS: client sends, server processes and returns RESULTS
+export const INTENT_TYPES = {
+  COMBAT_TICK: 'combat_tick',
+  EQUIP_REQUEST: 'equip_request',
+  UNEQUIP_REQUEST: 'unequip_request',
+  SELL_REQUEST: 'sell_request',
+  FORGE_REQUEST: 'forge_request',
+  ZONE_CHANGE_REQUEST: 'zone_change_request',
+  STAT_UPGRADE_REQUEST: 'stat_upgrade_request',
+};
+
+// ─── Direct API Helpers (no queue — send intent, wait for result) ──
+
+async function apiPost(endpoint, body) {
+  const res = await fetch(`${SERVER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': syncToken ? `Bearer ${syncToken}` : undefined,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+async function apiGet(endpoint) {
+  const res = await fetch(`${SERVER_URL}${endpoint}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': syncToken ? `Bearer ${syncToken}` : undefined,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Send combat tick intent to server.
+ * Server calculates damage, exp, gold, drops — returns results.
+ * Client keeps all visual/animation code.
+ */
+export async function sendCombatTick(zone) {
+  try {
+    return await apiPost('/api/combat/tick', { zone });
+  } catch (err) {
+    console.warn('Combat tick failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Send equip intent to server.
+ * Returns updated equipped slots + stats.
+ */
+export async function sendEquipRequest(itemId) {
+  try {
+    return await apiPost('/api/equip', { itemId });
+  } catch (err) {
+    console.warn('Equip request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Send unequip intent to server.
+ * Returns updated equipped slots + stats.
+ */
+export async function sendUnequipRequest(itemId) {
+  try {
+    return await apiPost('/api/unequip', { itemId });
+  } catch (err) {
+    console.warn('Unequip request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Send sell intent to server.
+ * Returns updated gold + inventory.
+ */
+export async function sendSellRequest(itemId) {
+  try {
+    return await apiPost('/api/sell', { itemId });
+  } catch (err) {
+    console.warn('Sell request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Send forge intent to server.
+ * Returns forge result (success/fail, updated item stats).
+ */
+export async function sendForgeRequest(itemId) {
+  try {
+    return await apiPost('/api/forge', { itemId });
+  } catch (err) {
+    console.warn('Forge request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Send zone change intent to server.
+ * Returns updated zone state.
+ */
+export async function sendZoneChange(zone) {
+  try {
+    return await apiPost('/api/zone/change', { zone });
+  } catch (err) {
+    console.warn('Zone change request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Send stat upgrade intent to server.
+ * Returns updated stats.
+ */
+export async function sendStatUpgrade(stat) {
+  try {
+    return await apiPost('/api/stat/upgrade', { stat });
+  } catch (err) {
+    console.warn('Stat upgrade request failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Check offline progress (called once on login).
+ * Returns { duration, expGained, goldGained } or null.
+ */
+export async function checkOfflineProgress() {
+  if (!syncToken) return null;
+  try {
+    const result = await apiGet('/api/offline/progress');
+    return result;
+  } catch (err) {
+    console.warn('Offline progress check failed:', err.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Legacy Queue System (DEPRECATED — kept for backward compat)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Use sendEquipRequest, sendSellRequest, etc. instead.
+ * This queue system is kept for backward compatibility only.
+ */
+export function loadQueue() {
+  try {
+    const saved = localStorage.getItem(QUEUE_KEY);
+    if (saved) eventQueue = JSON.parse(saved);
+  } catch { eventQueue = []; }
+}
+
+/**
+ * @deprecated Use server-authoritative intents instead.
+ */
+export function saveQueue() {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(eventQueue));
+}
+
+/**
+ * @deprecated Use server-authoritative intents instead.
+ */
+export function clearQueue() {
+  eventQueue = [];
+  saveQueue();
+}
+
+/**
+ * @deprecated Use server-authoritative intents instead.
+ */
+export function getQueueLength() {
+  return eventQueue.length;
+}
+
+/**
+ * @deprecated Use server-authoritative intents instead.
+ */
 export function queueEvent(type, data = {}) {
   const event = {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -76,7 +245,9 @@ export function queueEvent(type, data = {}) {
   return event;
 }
 
-// ─── Flush Queue to Server ───────────────────────────────
+/**
+ * @deprecated Use server-authoritative intents instead.
+ */
 export async function flushQueue() {
   if (isSyncing || eventQueue.length === 0 || !syncToken) return;
   
