@@ -4767,17 +4767,24 @@ function renderInventory() {
   const bagDiv = document.getElementById('inventory-slots')
   bagDiv.innerHTML = ''
   for (let i = 0; i < state.inventory.length; i++) {
+    try {
     const item = state.inventory[i]
+    if (!item || !item.id) continue
     const div = document.createElement('div')
     div.className = 'inv-slot'
-    div.style.borderColor = item.rarityColor
+    div.style.borderColor = item.rarityColor || '#aaa'
     if (item.rarity === 'archgod') div.style.background = 'rgba(255,111,0,0.08)'
     else if (item.rarity === 'immortal') div.style.background = 'rgba(224,224,224,0.06)'
     else if (item.rarity === 'mythic') div.style.background = 'rgba(244,67,54,0.06)'
     const forgeTag = item.forgeLevel > 0 ? `<div class="eq-forge-tag">+${item.forgeLevel}</div>` : ''
+    let statsStr = ''
+    if (item.atk > 0) statsStr += `<span style="color:#e53935">⚔${item.atk}</span> `
+    if (item.def > 0) statsStr += `<span style="color:#42a5f5">🛡${item.def}</span> `
+    if (item.hp > 0) statsStr += `<span style="color:#ef5350">❤${item.hp}</span> `
+    if (item.spd > 0) statsStr += `<span style="color:#ffa726">⚡${item.spd}</span> `
     div.innerHTML = `<div class="eq-emoji">${equipIcon(item, 28)}</div>
-      <div class="eq-name" style="color:${item.rarityColor}">${item.name}</div>
-      <div class="eq-rarity" style="color:${item.rarityColor}">${item.rarityName}</div>
+      <div class="eq-name" style="color:${item.rarityColor || '#aaa'}">${item.name || '?'}</div>
+      <div class="eq-rarity" style="color:${item.rarityColor || '#aaa'}">${item.rarityName || item.rarity || '?'} ${statsStr}</div>
       ${forgeTag}`
     div.onclick = () => showDetail(item, 'bag', i)
     // Lock icon
@@ -4787,6 +4794,7 @@ function renderInventory() {
     lockEl.onclick = (e) => { e.stopPropagation(); toggleLockItem(i) }
     div.appendChild(lockEl)
     bagDiv.appendChild(div)
+    } catch(e) { console.warn('Bag item render error:', e) }
   }
   // Update counts
   document.getElementById('inv-count').textContent = state.inventory.length
@@ -4795,16 +4803,18 @@ function renderInventory() {
 
 let _detailItem = null, _detailSource = null, _detailIdx = null
 function showDetail(item, source, idx) {
+  if (!item) return
   _detailItem = item; _detailSource = source; _detailIdx = idx
   const d = document.getElementById('item-detail')
   d.classList.add('open')
   document.getElementById('dt-emoji').innerHTML = equipIcon(item, 44)
   const forgeStr = (item.forgeLevel || 0) > 0 ? ` +${item.forgeLevel}` : ''
-  document.getElementById('dt-name').textContent = item.name + forgeStr
-  document.getElementById('dt-name').style.color = item.rarityColor
-  document.getElementById('dt-rarity').textContent = item.rarityName
-  document.getElementById('dt-rarity').style.color = item.rarityColor
-  document.getElementById('dt-type').textContent = EQUIP_TYPES[item.type].name + ' Slot'
+  document.getElementById('dt-name').textContent = (item.name || '?') + forgeStr
+  document.getElementById('dt-name').style.color = item.rarityColor || '#aaa'
+  document.getElementById('dt-rarity').textContent = item.rarityName || item.rarity || '?'
+  document.getElementById('dt-rarity').style.color = item.rarityColor || '#aaa'
+  const typeName = EQUIP_TYPES[item.type]?.name || item.typeName || item.type || 'Item'
+  document.getElementById('dt-type').textContent = typeName + ' Slot'
   // Stats
   let statsHtml = ''
   if (item.atk > 0) statsHtml += `<span class="detail-stat">⚔️ <b>+${item.atk}</b> ATK</span>`
@@ -4813,8 +4823,9 @@ function showDetail(item, source, idx) {
   if (item.spd > 0) statsHtml += `<span class="detail-stat">⚡ <b>+${item.spd}</b> SPD</span>`
   document.getElementById('dt-stats').innerHTML = statsHtml
   // Level req
-  const canEquip = state.level >= item.lvlReq
-  document.getElementById('dt-lvlreq').innerHTML = `Lv.${item.lvlReq} required ${canEquip ? '<span style="color:#4caf50">✓</span>' : '<span style="color:#f44336">✗ Need '+(item.lvlReq - state.level)+' more levels</span>'}`
+  const lvlReq = item.lvlReq || 1
+  const canEquip = state.level >= lvlReq
+  document.getElementById('dt-lvlreq').innerHTML = `Lv.${lvlReq} required ${canEquip ? '<span style="color:#4caf50">✓</span>' : '<span style="color:#f44336">✗ Need '+(lvlReq - state.level)+' more levels</span>'}`
   // Forge info
   const forgeLevel = item.forgeLevel || 0
   const forgeColor = forgeLevel >= 10 ? '#ff6f00' : forgeLevel >= 8 ? '#f44336' : forgeLevel >= 5 ? '#ff9800' : '#ffd700'
