@@ -366,10 +366,16 @@ function equipItem(idx) {
   state.inventory.splice(idx, 1); if (old) state.inventory.push(old)
   calcStats(); addCombatLog(`Equipped ${item.name}`)
   state.floatTexts.push({text:`${item.emoji} Equipped!`, y:canvas.height*0.35, color:item.rarityColor, size:14, life:1.2, x:canvas.width/2+40})
+  queueEvent(EVENT_TYPES.ITEM_EQUIP, { item, slot: item.slot, old })
+  // Send to server
+  serverApi.sendEvent('item_equip', { itemId: item.id }).catch(e => console.warn('Server equip failed:', e))
 }
 function unequipItem(slot) {
   const item = state.equipped[slot]; if (!item || state.inventory.length >= INVENTORY_MAX) return
   state.inventory.push(item); state.equipped[slot] = null; calcStats()
+  queueEvent(EVENT_TYPES.ITEM_UNEQUIP, { item, slot })
+  // Send to server
+  serverApi.sendEvent('item_unequip', { itemId: item.id }).catch(e => console.warn('Server unequip failed:', e))
 }
 function autoEquipAll() {
   let equipped = 0
@@ -403,6 +409,9 @@ function sellItem(idx) {
   state.gold += val; state.inventory.splice(idx, 1)
   addCombatLog(`Sold ${item.name} +${val}G`)
   state.floatTexts.push({text:`+${val}G`, y:canvas.height*0.42, color:'#ffd700', size:14, life:1, x:canvas.width/2+40})
+  queueEvent(EVENT_TYPES.ITEM_SELL, { item, gold: val, totalGold: state.gold })
+  // Send to server
+  serverApi.sendEvent('item_sell', { itemId: item.id }).catch(e => console.warn('Server sell failed:', e))
 }
 function forgeItem(idx) {
   const item = state.inventory[idx]; if (!item) return
@@ -426,18 +435,23 @@ function forgeItem(idx) {
     item.spd = Math.floor(base.spd * rMul * lb * mul) || 0
     addCombatLog(`Forged ${item.name} → +${nextLvl}!`)
     state.floatTexts.push({text:`🔨 +${nextLvl}!`, y:canvas.height*0.35, color:'#4caf50', size:14, life:1.2, x:canvas.width/2+40})
+    queueEvent(EVENT_TYPES.FORGE_UPGRADE, { item, level: nextLvl, gold: state.gold })
   } else {
     if (nextLvl >= 8) {
       // Destroy at +8+
       state.inventory.splice(idx, 1)
       addCombatLog(`💀 ${item.name} DESTROYED at +${nextLvl}!`)
       state.floatTexts.push({text:`💀 DESTROYED!`, y:canvas.height*0.35, color:'#f44336', size:16, life:1.5, x:canvas.width/2+40})
+      queueEvent(EVENT_TYPES.FORGE_UPGRADE, { item, level: nextLvl, success: false, destroyed: true, gold: state.gold })
     } else {
       addCombatLog(`Failed to forge ${item.name} (+${nextLvl})`)
       state.floatTexts.push({text:`Forge Failed!`, y:canvas.height*0.35, color:'#ff9800', size:13, life:1, x:canvas.width/2+40})
+      queueEvent(EVENT_TYPES.FORGE_UPGRADE, { item, level: nextLvl, success: false, gold: state.gold })
     }
   }
   calcStats()
+  // Send to server
+  serverApi.sendEvent('forge_upgrade', { itemId: item.id }).catch(e => console.warn('Server forge failed:', e))
 }
 function equipBonusAtk() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=state.equipped[s].atk; return b }
 function equipBonusDef() { let b=0; for(const s in state.equipped) if(state.equipped[s]) b+=state.equipped[s].def; return b }
@@ -517,6 +531,8 @@ function saveGame() {
   if (isLoggedIn() && Date.now() - (state._lastServerSync || 0) > 30000) {
     state._lastServerSync = Date.now();
     syncPlayerState(state).catch(() => {});
+    // Also do full state sync with new system
+    syncFullState(state).catch(() => {});
   }
 }
 function loadGame() {
@@ -829,6 +845,9 @@ function addExp(a) {
     updateSkillBtn()
     // Sync to server on level up
     syncPlayerState(state).catch(() => {});
+    queueEvent(EVENT_TYPES.LEVEL_UP, { level: state.level, gold: state.gold, zone: state.zone });
+    // Send to server
+    serverApi.sendEvent('level_up', {}).catch(e => console.warn('Server level_up failed:', e));
   }
 }
 
@@ -984,6 +1003,9 @@ function playerAttack() {
         if (drop) {
           state.floatTexts.push({ text: `${drop.emoji} ${drop.name}`, y:canvas.height*0.38 - di*18, color:drop.rarityColor, size:12, life:1.5, x:canvas.width/2+40 })
           addCombatLog(`Boss dropped ${drop.name}`)
+          queueEvent(EVENT_TYPES.ITEM_DROP, { item: drop, zone: state.zone, boss: true })
+          // Send to server
+          serverApi.sendEvent('item_drop', { monsterLevel: state.level, item: drop }).catch(e => console.warn('Server item_drop failed:', e))
         }
       }
       state._bossDropBoost = false
@@ -994,6 +1016,9 @@ function playerAttack() {
         const msg = `${drop.emoji} ${drop.name} → Bag`
         state.floatTexts.push({ text: msg, y:canvas.height*0.38, color:drop.rarityColor, size:12, life:1.5, x:canvas.width/2+40 })
         addCombatLog(`Got ${drop.name}`)
+        queueEvent(EVENT_TYPES.ITEM_DROP, { item: drop, zone: state.zone, boss: false })
+        // Send to server
+        serverApi.sendEvent('item_drop', { monsterLevel: state.level, item: drop }).catch(e => console.warn('Server item_drop failed:', e))
       }
       // Check if should trigger boss next
       if (state.bossKillCounter >= 50 && !state.isBoss && !state.bossWarning) {
@@ -5123,6 +5148,9 @@ function goToZone(idx) {
   addCombatLog(`Teleported to ${zn.name}!`)
   state.floatTexts.push({ text: `→ ${zn.name}`, y:canvas.height*0.25, color:'#00bcd4', size:18, life:2, x:canvas.width/2 })
   document.getElementById('zone-panel').style.display = 'none'
+  queueEvent(EVENT_TYPES.ZONE_CHANGE, { zone: idx, name: zn.name })
+  // Send to server
+  serverApi.sendEvent('zone_change', { zone: idx }).catch(e => console.warn('Server zone_change failed:', e))
   state.mob = null; state.inCombat = false
   setTimeout(spawnMob, 300)
   saveGame()
@@ -5253,7 +5281,9 @@ window.toggleAutoPotion = toggleAutoPotion
 window.toggleNightmare = toggleNightmare
 
 // ─── INIT ──────────────────────────────────────────────
-import { initFarcaster, connectWallet, login, checkTokenGate, fetchPrices, convertGold, syncPlayerState, getUser, getWallet, getGateStatus, checkStoredAuth, getSDK, isRealFarcasterUser } from './farcaster.js';
+import { initFarcaster, connectWallet, login, checkTokenGate, fetchPrices, convertGold, syncPlayerState, getUser, getWallet, getGateStatus, isLoggedIn, checkStoredAuth, getSDK, isRealFarcasterUser } from './farcaster.js';
+import { queueEvent, initSync, syncFullState, getServerState, mergeStates, EVENT_TYPES } from './sync.js';
+import * as serverApi from './server-api.js';
 
 // ─── FARCASTER GATE FLOW ────────────────────────────────
 let fcReady = false;
@@ -5327,38 +5357,80 @@ async function onStartGame() {
   const statusEl = document.getElementById('gate-status');
   const startBtn = document.getElementById('gate-start-btn');
   
-  try {
-    if (startBtn) { startBtn.disabled = true; startBtn.textContent = '⏳ Loading...'; }
+  // Safety: 15s max for entire flow
+  const overallTimeout = setTimeout(() => {
+    console.error('⏰ onStartGame overall timeout');
+    if (statusEl) { statusEl.innerHTML = '❌ Timeout — server may be slow'; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '14px'; }
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+  }, 15000);
 
-    // Login to server
+  try {
+    if (startBtn) { startBtn.disabled = true; startBtn.textContent = '⏳ Connecting...'; }
+    if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; statusEl.style.fontSize = ''; }
+
+    // Step 1: Login to server
+    if (statusEl) statusEl.textContent = '🔑 Logging in...';
     const loginResult = await login();
     if (loginResult.error) {
-      if (statusEl) statusEl.textContent = `❌ ${loginResult.error}`;
+      console.error('Login error:', loginResult.error);
+      if (statusEl) { statusEl.innerHTML = `❌ Login failed: ${loginResult.error}`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; }
       if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+      clearTimeout(overallTimeout);
       return;
     }
 
-    // Check if player already has a character on server
+    // Initialize sync system with login token
+    const { getToken } = await import('./farcaster.js');
+    const authToken = getToken();
+    if (authToken) {
+      initSync(authToken);
+      console.log('✅ Sync system initialized');
+    }
+
+    // Step 2: Check if player already has a character on server
     const player = loginResult.player;
     const hasCharacter = player && (player.level > 1 || player.gold > 0 || (player.equipped && Object.values(player.equipped).some(v => v != null)));
+    console.log('Login OK, hasCharacter:', hasCharacter, 'player:', JSON.stringify(player).slice(0,200));
+    
     if (hasCharacter) {
-      restoreFromServer(player);
-      if (gateEl) gateEl.style.display = 'none';
-      document.getElementById('menu-screen').style.display = 'none';
-      document.getElementById('bottom-bar').style.display = 'block';
-      state.started = true;
-      calcStats(); spawnMob(); gameLoop(performance.now());
-      return;
+      // Try to restore existing character
+      const restored = restoreFromServer(player);
+      if (restored) {
+        // Success — hide gate, start game
+        if (gateEl) gateEl.style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('bottom-bar').style.display = 'block';
+        state.started = true;
+        calcStats(); spawnMob(); gameLoop(performance.now());
+        clearTimeout(overallTimeout);
+        return;
+      }
+      // restoreFromServer failed — fall through to hero selection
+      console.warn('restoreFromServer failed, falling through to hero selection');
     }
 
-    // New player — show hero selection
+    // Step 3: New player or restore failed — show hero selection
+    if (statusEl) statusEl.textContent = '⚔️ Choose your hero...';
     if (gateEl) gateEl.style.display = 'none';
-    prices = await fetchPrices();
+    
+    // Fetch prices with timeout
+    try {
+      prices = await Promise.race([
+        fetchPrices(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('prices timeout')), 5000))
+      ]);
+    } catch (e) {
+      console.warn('Prices fetch failed:', e.message);
+      prices = { currentPrice: 10000, sellPrice: 9500, buyPrice: 10500 };
+    }
+    
     setupHeroSelection();
+    clearTimeout(overallTimeout);
   } catch (err) {
     console.error('onStartGame error:', err);
-    if (statusEl) statusEl.textContent = `❌ Error: ${err.message}`;
+    if (statusEl) { statusEl.innerHTML = `❌ Error: ${err.message}`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; }
     if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+    clearTimeout(overallTimeout);
   }
 }
 

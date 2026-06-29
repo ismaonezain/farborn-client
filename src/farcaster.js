@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { connectWallet as walletConnect, disconnectWallet } from './wallet.js';
+import * as serverApi from './server-api.js';
 
 const SERVER_URL = 'https://farborn-server.vercel.app';
 
@@ -80,11 +81,11 @@ export async function login() {
   try {
     let quickAuthToken = null;
 
-    // Get Quick Auth token from SDK
+    // Get Quick Auth token from SDK (2s max)
     if (sdk) {
       try {
         const authPromise = sdk.quickAuth.getToken();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
         const { token: qt } = await Promise.race([authPromise, timeoutPromise]);
         quickAuthToken = qt;
         console.log('🔑 Quick Auth token');
@@ -130,15 +131,12 @@ export async function login() {
       authPayload.quickAuthToken = quickAuthToken;
     }
 
-    const res = await fetch(`${SERVER_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(authPayload)
-    });
-
-    const data = await res.json();
+    // Use server-api login function with token
+    const data = await serverApi.loginWithToken(farcasterUser.fid, farcasterUser.username, walletAddress, quickAuthToken);
+    
     if (data.token) {
       loginToken = data.token;
+      serverApi.setAuthToken(data.token);
       localStorage.setItem('farborn_auth_token', loginToken);
       localStorage.setItem('farborn_auth_expires', data.expiresAt);
       localStorage.setItem('farborn_wallet', walletAddress);
@@ -187,8 +185,10 @@ export async function convertGold(goldAmount, level) {
 }
 export async function syncPlayerState(gs) {
   if (!loginToken) return null;
-  try { return await (await fetch(`${SERVER_URL}/api/player`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${loginToken}` }, body: JSON.stringify({ level: gs.level, zone: gs.zone, gold: gs.gold, equipped: gs.equipped, bag: gs.inventory, class: gs.hero?.id }) })).json(); }
-  catch { return null; }
+  try {
+    const updates = { level: gs.level, zone: gs.zone, gold: gs.gold, equipped: gs.equipped, bag: gs.inventory, class: gs.hero?.id };
+    return await serverApi.updatePlayerState(updates);
+  } catch { return null; }
 }
 
 // ─── Disconnect / Getters ───────────────────────────────
