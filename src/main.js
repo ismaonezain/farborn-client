@@ -5371,11 +5371,12 @@ async function initApp() {
   const scEl = document.getElementById('gate-sc');
 
   if (gate.hasAccess) {
-    // ✅ Hold enough — show Start
+    // ✅ Hold enough — auto-start
     if (balEl) balEl.innerHTML = `✅ <span style="color:#4caf50;font-weight:bold;">${gate.balance.toLocaleString()} $FARBORN</span>`;
-    if (startBtn) startBtn.style.display = 'block';
+    if (startBtn) startBtn.style.display = 'none';
     if (buyBtn) buyBtn.style.display = 'none';
     if (scEl) scEl.style.display = 'none';
+    setTimeout(() => onStartGame(), 500);
   } else {
     // ❌ Not enough — show Buy
     if (balEl) balEl.innerHTML = `❌ <span style="color:#f44336;font-weight:bold;">${(gate.balance || 0).toLocaleString()} / 1,000 $FARBORN</span>`;
@@ -5393,21 +5394,18 @@ async function onStartGame() {
   // Safety: 15s max for entire flow
   const overallTimeout = setTimeout(() => {
     console.error('⏰ onStartGame overall timeout');
-    if (statusEl) { statusEl.innerHTML = '❌ Timeout — server may be slow'; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '14px'; }
-    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+    if (statusEl) { statusEl.innerHTML = '❌ Timeout — tap to retry'; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '14px'; statusEl.style.cursor = 'pointer'; statusEl.onclick = () => onStartGame(); }
   }, 15000);
 
   try {
-    if (startBtn) { startBtn.disabled = true; startBtn.textContent = '⏳ Connecting...'; }
-    if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; statusEl.style.fontSize = ''; }
+    if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; statusEl.style.fontSize = ''; statusEl.style.cursor = ''; statusEl.onclick = null; }
 
     // Step 1: Login to server
     if (statusEl) statusEl.textContent = '🔑 Logging in...';
     const loginResult = await login();
     if (loginResult.error) {
       console.error('Login error:', loginResult.error);
-      if (statusEl) { statusEl.innerHTML = `❌ Login failed: ${loginResult.error}`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; }
-      if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+      if (statusEl) { statusEl.innerHTML = `❌ ${loginResult.error}<br><small style="color:#888;cursor:pointer">tap to retry</small>`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; statusEl.style.cursor = 'pointer'; statusEl.onclick = () => onStartGame(); }
       clearTimeout(overallTimeout);
       return;
     }
@@ -5476,8 +5474,7 @@ async function onStartGame() {
     clearTimeout(overallTimeout);
   } catch (err) {
     console.error('onStartGame error:', err);
-    if (statusEl) { statusEl.innerHTML = `❌ Error: ${err.message}`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; }
-    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '⚔️ Enter the Realm'; }
+    if (statusEl) { statusEl.innerHTML = `❌ ${err.message || err}<br><small style="color:#888;cursor:pointer">tap to retry</small>`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; statusEl.style.cursor = 'pointer'; statusEl.onclick = () => onStartGame(); }
     clearTimeout(overallTimeout);
   }
 }
