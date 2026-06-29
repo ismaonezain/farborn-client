@@ -1,0 +1,24 @@
+{
+  "name": "farborn",
+  "version": "1.0.0",
+  "description": "Farborn - Farcaster MMORPG",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.3.0",
+    "@farcaster/miniapp-wagmi-connector": "^2.0.0",
+    "@wagmi/core": "^3.5.5",
+    "viem": "^2.53.1",
+    "vite": "^8.1.0",
+    "wagmi": "^3.6.21"
+  }
+}
