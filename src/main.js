@@ -5555,7 +5555,7 @@ function updateShopUIPatched() {
         <div id="token-buy-price" style="font-size:9px;color:#888;margin-bottom:2px;">Loading...</div>
         <div id="token-trend" style="font-size:8px;color:#888;margin-bottom:4px;"></div>
         <div id="token-usd-price" style="font-size:9px;color:#4caf50;margin-bottom:6px;padding:4px;background:rgba(76,175,80,0.1);border-radius:4px;"></div>
-        <div style="font-size:8px;color:#ff9800;margin-bottom:6px;">⛽ Requires 0.0001 ETH gas to treasury</div>
+        <div style="font-size:8px;color:#ff9800;margin-bottom:6px;">⛽ Requires 0.00001 ETH gas to treasury</div>
         <div style="display:flex;gap:6px;">
           <button onclick="convertMyGold(10000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">10K</button>
           <button onclick="convertMyGold(50000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">50K</button>
@@ -5791,21 +5791,21 @@ async function doConvertGold(amount) {
     return;
   }
   
-  // Step 1: Send ETH gas to treasury (~0.0001 ETH ≈ $0.30)
-  const ethAmountWei = '100000000000000'; // 0.0001 ETH
+  // Step 1: Send ETH gas to treasury (~0.00001 ETH ≈ $0.03)
+  const ethAmountWei = '10000000000000'; // 0.00001 ETH
   
   showModal('⛽ Step 1: Send Gas', `
     <div style="text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">⛽</div>
       <div style="margin-bottom:8px;color:#ff9800;">You need to send ETH gas to treasury first</div>
       <div style="padding:8px;background:rgba(255,152,0,0.1);border:1px solid #ff9800;border-radius:8px;font-size:9px;color:#ff9800;">
-        Amount: ~0.0001 ETH (~$0.30)<br>
+        Amount: ~0.00001 ETH (~$0.03)<br>
         This covers gas for treasury to send you FARBORN
       </div>
     </div>
   `, [
     { text: 'Cancel', onclick: 'closeModal()', color: '#666' },
-    { text: 'Send 0.0001 ETH', onclick: `doSendEthGas(${amount})`, color: '#ff9800' }
+    { text: 'Send 0.00001 ETH', onclick: `doSendEthGas(${amount})`, color: '#ff9800' }
   ]);
 }
 window.doConvertGold = doConvertGold;
@@ -5813,13 +5813,13 @@ window.doConvertGold = doConvertGold;
 async function doSendEthGas(amount) {
   closeModal();
   const TREASURY = '0x3e7994F6C55FC3FEcf3698e573aa22f463E99F02';
-  const ethAmountWei = '100000000000000'; // 0.0001 ETH
+  const ethAmountWei = '10000000000000'; // 0.00001 ETH
   
   showModal('⏳ Sending ETH...', `
     <div style="text-align:center;padding:20px 0;">
       <div style="font-size:28px;animation:pulse 1s infinite;">⛽</div>
       <div style="margin-top:8px;color:#ff9800;">Please confirm in your wallet...</div>
-      <div style="font-size:9px;color:#888;margin-top:4px;">Sending 0.0001 ETH to treasury</div>
+      <div style="font-size:9px;color:#888;margin-top:4px;">Sending 0.00001 ETH to treasury</div>
     </div>
   `, []);
   
