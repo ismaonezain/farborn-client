@@ -1221,56 +1221,6 @@ function drawPlayer() {
     ctx.globalAlpha = 1
   }
 
-  // --- ACCESSORY VISUAL (wings/aura/tail) ---
-  const acc = state.equipped.accessory
-  if (acc) {
-    const accColor = acc.rarityColor || '#FFD700'
-    const accRarity = acc.rarity || 'common'
-    const wingFlap = Math.sin(t * 4) * 8 * s
-    // Aura glow behind hero
-    ctx.globalAlpha = 0.15 + Math.sin(t * 2) * 0.08
-    ctx.fillStyle = accColor
-    ctx.beginPath()
-    ctx.ellipse(cx + sz*0.5, cy + sz*0.6, sz*0.9, sz*1.1, 0, 0, Math.PI*2)
-    ctx.fill()
-    ctx.globalAlpha = 1
-    // Wings (based on rarity tier)
-    if (['rare','epic','legendary','mythic','immortal','celestial','transcendent','archgod'].includes(accRarity)) {
-      ctx.save()
-      ctx.globalAlpha = 0.7 + Math.sin(t * 3) * 0.2
-      // Left wing
-      ctx.fillStyle = accColor
-      ctx.beginPath()
-      ctx.moveTo(cx + sz*0.2, cy + sz*0.3)
-      ctx.quadraticCurveTo(cx - sz*0.6, cy - sz*0.3 + wingFlap, cx - sz*0.8, cy + sz*0.1 + wingFlap*0.5)
-      ctx.quadraticCurveTo(cx - sz*0.5, cy + sz*0.5, cx + sz*0.2, cy + sz*0.5)
-      ctx.fill()
-      // Right wing
-      ctx.beginPath()
-      ctx.moveTo(cx + sz*0.8, cy + sz*0.3)
-      ctx.quadraticCurveTo(cx + sz*1.6, cy - sz*0.3 + wingFlap, cx + sz*1.8, cy + sz*0.1 + wingFlap*0.5)
-      ctx.quadraticCurveTo(cx + sz*1.5, cy + sz*0.5, cx + sz*0.8, cy + sz*0.5)
-      ctx.fill()
-      ctx.globalAlpha = 1
-      ctx.restore()
-    }
-    // Tail (all accessories get a tail)
-    ctx.strokeStyle = accColor
-    ctx.lineWidth = 3 * s
-    ctx.globalAlpha = 0.6
-    ctx.beginPath()
-    ctx.moveTo(cx + sz*0.5, cy + sz*1.1)
-    const tailWag = Math.sin(t * 5) * 6 * s
-    ctx.quadraticCurveTo(cx + sz*0.2 + tailWag, cy + sz*1.4, cx + sz*0.1 + tailWag*1.5, cy + sz*1.6)
-    ctx.stroke()
-    // Tail tip spark
-    ctx.fillStyle = accColor
-    ctx.beginPath()
-    ctx.arc(cx + sz*0.1 + tailWag*1.5, cy + sz*1.6, 3*s, 0, Math.PI*2)
-    ctx.fill()
-    ctx.globalAlpha = 1
-    ctx.lineWidth = 1
-  }
 
   // --- EQUIPPED ARMOR CHECK (used by legs, body, arms) ---
   const eqArmor = state.equipped.armor
