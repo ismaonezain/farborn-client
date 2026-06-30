@@ -937,15 +937,19 @@ function playerAttack() {
   state.floatTexts.push({ text: `${critText}-${dmg}`, y:canvas.height*0.35+Math.random()*20, color:dmgColor, size:dmgSize, life:1, x:canvas.width/2+40+Math.random()*30-15 })
   // Spawn particles on hit
   const hitX = nearest.x + 18*getS(), hitY = canvas.height*0.48
-  const particleCount = isSkill ? 20 : 12
+  const particleCount = isSkill ? (state.hero.id === 'necromancer' ? 10 : 20) : 12
   const particleColors = isSkill
     ? (state.hero.id === 'warrior' ? ['#ffcc00','#ff8800','#fff','#ffd700']
       : state.hero.id === 'rogue' ? ['#ff1744','#b71c1c','#880e4f','#fff']
+      : state.hero.id === 'necromancer' ? ['#00e676','#7b1fa2','#1a1a1a','#4caf50']
+      : state.hero.id === 'mage' ? ['#e040fb','#7c4dff','#448aff','#fff']
       : ['#ffd700','#fff8e1','#f1c40f','#fff'])
     : ['#ff5555','#ff8888','#ffaaaa']
   for (let i = 0; i < particleCount; i++) {
-    const a = Math.random()*Math.PI*2, sp = 80+Math.random()*160
-    state.particles.push({ x:hitX, y:hitY, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-60, size:isSkill?5*getS():4*getS(), life:isSkill?1.5:1.2, color: particleColors[i % particleColors.length] })
+    const a = Math.random()*Math.PI*2
+    const isNecro = state.hero.id === 'necromancer'
+    const sp = isNecro ? 30+Math.random()*50 : 80+Math.random()*160
+    state.particles.push({ x:hitX, y:hitY, vx:Math.cos(a)*sp, vy:isNecro?-20-Math.random()*40:Math.sin(a)*sp-60, size:isSkill?(isNecro?4*getS():5*getS()):4*getS(), life:isSkill?(isNecro?2.0:1.5):1.2, color: particleColors[i % particleColors.length] })
   }
   HERO_SHAKE_VAR_X = (Math.random()-0.5)*8; HERO_SHAKE_VAR_Y = (Math.random()-0.5)*6
   // Spawn hero projectile for ranged, melee skill VFX for melee
@@ -5556,11 +5560,12 @@ function updateShopUIPatched() {
         <div id="token-trend" style="font-size:8px;color:#888;margin-bottom:4px;"></div>
         <div id="token-usd-price" style="font-size:9px;color:#4caf50;margin-bottom:6px;padding:4px;background:rgba(76,175,80,0.1);border-radius:4px;"></div>
         <div style="font-size:8px;color:#ff9800;margin-bottom:6px;">⛽ Requires 0.00001 ETH gas to treasury</div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="convertMyGold(10000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">10K</button>
-          <button onclick="convertMyGold(50000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">50K</button>
-          <button onclick="convertMyGold(100000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.15);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;font-weight:bold;cursor:pointer;">100K</button>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input id="convert-gold-amount" type="number" placeholder="Amount Gold" style="flex:1;padding:4px 6px;background:rgba(255,255,255,0.05);border:1px solid #555;border-radius:4px;color:#fff;font-size:9px;">
+          <button onclick="convertMyGoldManual()" style="padding:4px 12px;background:rgba(255,215,0,0.15);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">🔄 Convert</button>
         </div>
+        <div id="gold-preview" style="font-size:8px;color:#888;"></div>
+        <div style="font-size:8px;color:#666;">Enter gold amount → Send ETH gas → Receive FARBORN</div>
       </div>
       <div style="margin-top:8px;padding:10px;background:rgba(139,92,246,0.08);border:1px solid #8B5CF6;border-radius:10px;">
         <div style="font-size:11px;font-weight:bold;color:#8B5CF6;margin-bottom:6px;">🪙 $FARBORN → Gold</div>
@@ -5572,6 +5577,20 @@ function updateShopUIPatched() {
         <div style="font-size:8px;color:#666;">Click Convert → wallet confirm → auto receive gold</div>
       </div>`;
     shopPanel.appendChild(div);
+    
+    // Add live preview on input
+    const goldInput = document.getElementById('convert-gold-amount');
+    if (goldInput) {
+      goldInput.addEventListener('input', async () => {
+        const amount = parseInt(goldInput.value) || 0;
+        const previewEl = document.getElementById('gold-preview');
+        if (!previewEl) return;
+        if (amount <= 0) { previewEl.innerHTML = ''; return; }
+        const prices = await fetchConvertPricesData();
+        const tokens = Math.floor(amount / prices.buyPrice);
+        previewEl.innerHTML = `<span style="color:#ffd700;">≈ ${tokens} FARBORN</span> (rate: 1 = ${prices.buyPrice.toLocaleString()}G)`;
+      });
+    }
   }
   fetchConvertPrices();
 }
@@ -5731,6 +5750,22 @@ setTimeout(updateTokenInfoBar, 3000); // Initial load
 // ═══════════════════════════════════════════════════════════
 //  CONVERT: GOLD → FARBORN (with custom modal)
 // ═══════════════════════════════════════════════════════════
+function convertMyGoldManual() {
+  const input = document.getElementById('convert-gold-amount');
+  const amount = parseInt(input?.value || '0');
+  if (!amount || amount <= 0) {
+    showModal('⚠️ Invalid Amount', `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">💰</div>
+        <div>Enter amount of Gold to convert</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+    return;
+  }
+  convertMyGold(amount);
+}
+window.convertMyGoldManual = convertMyGoldManual;
+
 async function convertMyGold(amount) {
   if (state.gold < amount) {
     showModal('⚠️ Insufficient Gold', `
