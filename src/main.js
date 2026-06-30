@@ -1824,7 +1824,7 @@ function drawPlayer() {
   const wpnSvg = HERO_WEAPONS[wid]?.svg
   if (wpnSvg) {
     const wpnImg = getSvgImage(wpnSvg)
-    const wpnSize = sz * 0.55
+    let wpnSize = sz * 0.55
     // Position weapon based on class
     let wpnX = -wpnSize * 0.4
     let wpnY = sz * 0.05
