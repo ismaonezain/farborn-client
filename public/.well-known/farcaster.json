@@ -7,9 +7,9 @@
   "miniapp": {
     "version": "1",
     "name": "Farborn",
-    "iconUrl": "https://files.catbox.moe/14yt6m.svg",
+    "iconUrl": "https://files.catbox.moe/oz7uyo.png",
     "homeUrl": "https://farborn-client.vercel.app",
-    "imageUrl": "https://files.catbox.moe/i22kxl.svg",
+    "imageUrl": "https://files.catbox.moe/pvrfcd.png",
     "buttonTitle": "Play Farborn",
     "splashBackgroundColor": "#0a0a1a",
     "subtitle": "Idle RPG on Base Chain",
@@ -23,13 +23,13 @@
       "web3"
     ],
     "tagline": "Born in the Far",
-    "heroImageUrl": "https://files.catbox.moe/i22kxl.svg",
+    "heroImageUrl": "https://files.catbox.moe/pvrfcd.png",
     "screenshotUrls": [
-      "https://files.catbox.moe/i22kxl.svg"
+      "https://files.catbox.moe/pvrfcd.png"
     ],
     "ogTitle": "Farborn - Idle RPG on Base",
     "ogDescription": "Choose your hero, battle mobs, collect loot, forge equipment.",
-    "ogImageUrl": "https://files.catbox.moe/i22kxl.svg",
+    "ogImageUrl": "https://files.catbox.moe/pvrfcd.png",
     "castShareUrl": "https://farborn-client.vercel.app",
     "requiredChains": [
       "eip155:8453"
