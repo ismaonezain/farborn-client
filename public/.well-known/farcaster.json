@@ -9,34 +9,19 @@
     "name": "Farborn",
     "iconUrl": "https://files.catbox.moe/7dd2hn.jpg",
     "homeUrl": "https://farborn-client.vercel.app",
-    "imageUrl": "https://files.catbox.moe/tthwde.jpg",
-    "buttonTitle": "Play Farborn",
+    "ogImageUrl": "https://files.catbox.moe/tthwde.jpg",
+    "splashImageUrl": "https://files.catbox.moe/7dd2hn.jpg",
     "splashBackgroundColor": "#0a0a1a",
-    "subtitle": "Idle RPG on Base Chain",
+    "subtitle": "Idle RPG on Base",
     "description": "Choose your hero, battle mobs, collect loot, forge equipment. Pure idle RPG on Base.",
     "primaryCategory": "games",
-    "tags": [
-      "rpg",
-      "idle",
-      "gaming",
-      "base",
-      "web3"
-    ],
+    "tags": ["rpg", "idle", "gaming", "base", "web3"],
     "tagline": "Born in the Far",
     "heroImageUrl": "https://files.catbox.moe/tthwde.jpg",
-    "screenshotUrls": [
-      "https://files.catbox.moe/tthwde.jpg"
-    ],
+    "screenshotUrls": ["https://files.catbox.moe/tthwde.jpg"],
     "ogTitle": "Farborn - Idle RPG on Base",
     "ogDescription": "Choose your hero, battle mobs, collect loot, forge equipment.",
-    "ogImageUrl": "https://files.catbox.moe/tthwde.jpg",
-    "castShareUrl": "https://farborn-client.vercel.app",
-    "requiredChains": [
-      "eip155:8453"
-    ],
-    "requiredCapabilities": [
-      "wallet.getEthereumProvider",
-      "actions.ready"
-    ]
+    "requiredChains": ["eip155:8453"],
+    "requiredCapabilities": ["wallet.getEthereumProvider", "actions.ready"]
   }
 }
