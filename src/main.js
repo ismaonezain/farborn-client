@@ -5398,6 +5398,7 @@ async function onStartGame() {
   // Safety: 15s max for entire flow
   const overallTimeout = setTimeout(() => {
     console.error('⏰ onStartGame overall timeout');
+    if (gateEl) gateEl.style.display = 'none';
     if (statusEl) { statusEl.innerHTML = '❌ Timeout — tap to retry'; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '14px'; statusEl.style.cursor = 'pointer'; statusEl.onclick = () => onStartGame(); }
   }, 15000);
 
@@ -5409,6 +5410,7 @@ async function onStartGame() {
     const loginResult = await login();
     if (loginResult.error) {
       console.error('Login error:', loginResult.error);
+      if (gateEl) gateEl.style.display = 'none';
       if (statusEl) { statusEl.innerHTML = `❌ ${loginResult.error}<br><small style="color:#888;cursor:pointer">tap to retry</small>`; statusEl.style.color = '#f44336'; statusEl.style.fontSize = '13px'; statusEl.style.cursor = 'pointer'; statusEl.onclick = () => onStartGame(); }
       clearTimeout(overallTimeout);
       return;
