@@ -612,7 +612,7 @@ function restoreFromServer(player) {
   Object.assign(state, {
     hero: heroData, started: true, hp: heroData.baseHp,
     level: player.level || 1, zone: player.zone || 0, gold: player.gold || 0,
-    exp: player.exp || 0, maxExp: 100, totalKills: player.totalKills || 0, zoneKills: player.zoneKills || 0,
+    exp: player.exp || 0, maxExp: Math.floor(100 * Math.pow(1.2, (player.level || 1) - 1)), totalKills: player.totalKills || 0, zoneKills: player.zoneKills || 0,
     combatLog: [], floatTexts: [], particles: [],
     upg: {
       atk: (player.upg && player.upg.atk) || 0,
@@ -622,6 +622,7 @@ function restoreFromServer(player) {
     },
     equipped: player.equipped || { weapon:null, armor:null, shield:null, helmet:null, boots:null, ring:null, accessory:null },
     inventory: player.bag || [],
+    potions: player.potions || { small: 0, medium: 0, large: 0 },
     skillCd: 0, skillReady: true, atkAnim: 0, mobHitFlash: 0, heroRecoilX: 0, mobs: [], mobDying: false, mobDeathTimer: 0, skillIdx: 0,
     nightmare: false, isBoss: false, bossKillCounter: 0, bossWarning: false, bossWarningTimer: 0,
     prestige: player.prestige || 0, prestigeMult: player.prestigeMult || 1
@@ -5372,11 +5373,16 @@ async function initApp() {
     if (scEl) scEl.style.display = 'none';
     setTimeout(() => onStartGame(), 500);
   } else {
-    // ❌ Not enough — show Buy
+    // ❌ Not enough — show Buy + Swap link
     if (balEl) balEl.innerHTML = `❌ <span style="color:#f44336;font-weight:bold;">${(gate.balance || 0).toLocaleString()} / 1,000 $FARBORN</span>`;
     if (startBtn) startBtn.style.display = 'none';
     if (buyBtn) buyBtn.style.display = 'block';
     if (scEl) scEl.style.display = 'block';
+    // Show swap link if available
+    if (gate.swapUrl) {
+      const swapBtn = document.getElementById('gate-swap-btn');
+      if (swapBtn) { swapBtn.style.display = 'block'; swapBtn.href = gate.swapUrl; }
+    }
   }
 }
 
@@ -5482,6 +5488,20 @@ function onBuyToken() {
   });
 }
 
+function copySC() {
+  navigator.clipboard.writeText(FARBORN_SC).then(() => {
+    const el = document.getElementById('gate-sc');
+    if (el) { el.textContent = '✅ Copied!'; setTimeout(() => { el.textContent = 'SC: ' + FARBORN_SC; }, 1500); }
+  });
+}
+
+function copyGameSC() {
+  navigator.clipboard.writeText(FARBORN_SC).then(() => {
+    const el = document.getElementById('sc-copy');
+    if (el) { const orig = el.textContent; el.textContent = '✅ Copied!'; setTimeout(() => { el.textContent = orig; }, 1500); }
+  });
+}
+
 function startOrMenu() {
   // Check if returning player (localStorage)
   if (loadGame() && state.started) {
@@ -5517,38 +5537,509 @@ function updatePriceDisplay() {
 const _origUpdateShopUI = typeof updateShopUI === 'function' ? updateShopUI : null;
 function updateShopUIPatched() {
   if (_origUpdateShopUI) _origUpdateShopUI();
-  updatePriceDisplay();
-  // Add convert section if not present
+  // Add convert section OUTSIDE shop-items so it's never cleared
+  const shopPanel = document.getElementById('shop-panel');
   const items = document.getElementById('shop-items');
-  if (items && !document.getElementById('convert-section') && prices) {
+  if (shopPanel && items && !document.getElementById('convert-section')) {
     const div = document.createElement('div');
     div.id = 'convert-section';
+    div.style.cssText = 'padding:8px 12px;border-top:1px solid #333;flex-shrink:0;';
     div.innerHTML = `
-      <div style="margin-top:12px;padding:10px;background:rgba(255,215,0,0.08);border:1px solid #ffd700;border-radius:10px;">
-        <div style="font-size:11px;font-weight:bold;color:#ffd700;margin-bottom:6px;">💰 Gold → $FARBORN</div>
-        <div id="token-price" style="font-size:9px;color:#888;margin-bottom:6px;">1 FARBORN = ${prices.currentPrice.toLocaleString()} gold</div>
+      <div style="padding:10px;background:rgba(255,215,0,0.08);border:1px solid #ffd700;border-radius:10px;">
+        <div style="font-size:11px;font-weight:bold;color:#ffd700;margin-bottom:4px;">💰 Gold → $FARBORN</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;background:rgba(0,0,0,0.3);border-radius:4px;padding:3px 6px;">
+          <span style="font-size:7px;color:#888;flex-shrink:0;">SC:</span>
+          <span id="sc-addr" style="font-size:8px;color:#ffd700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">0x4abD609B323ce6E7C0770E86d21E76BA00209DE2</span>
+          <button onclick="navigator.clipboard.writeText('0x4abD609B323ce6E7C0770E86d21E76BA00209DE2').then(()=>this.textContent='✅')" style="flex-shrink:0;padding:2px 6px;background:rgba(255,215,0,0.15);border:1px solid #ffd700;border-radius:4px;color:#ffd700;font-size:7px;cursor:pointer;">📋</button>
+        </div>
+        <div id="token-buy-price" style="font-size:9px;color:#888;margin-bottom:2px;">Loading...</div>
+        <div id="token-trend" style="font-size:8px;color:#888;margin-bottom:4px;"></div>
+        <div id="token-usd-price" style="font-size:9px;color:#4caf50;margin-bottom:6px;padding:4px;background:rgba(76,175,80,0.1);border-radius:4px;"></div>
+        <div style="font-size:8px;color:#ff9800;margin-bottom:6px;">⛽ Requires 0.0001 ETH gas to treasury</div>
         <div style="display:flex;gap:6px;">
           <button onclick="convertMyGold(10000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">10K</button>
           <button onclick="convertMyGold(50000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.1);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;cursor:pointer;">50K</button>
           <button onclick="convertMyGold(100000)" style="flex:1;padding:5px;background:rgba(255,215,0,0.15);border:1px solid #ffd700;border-radius:6px;color:#ffd700;font-size:9px;font-weight:bold;cursor:pointer;">100K</button>
         </div>
+      </div>
+      <div style="margin-top:8px;padding:10px;background:rgba(139,92,246,0.08);border:1px solid #8B5CF6;border-radius:10px;">
+        <div style="font-size:11px;font-weight:bold;color:#8B5CF6;margin-bottom:6px;">🪙 $FARBORN → Gold</div>
+        <div id="token-sell-price" style="font-size:9px;color:#888;margin-bottom:6px;">Loading price...</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input id="convert-token-amount" type="number" placeholder="Amount FARBORN" style="flex:1;padding:4px 6px;background:rgba(255,255,255,0.05);border:1px solid #555;border-radius:4px;color:#fff;font-size:9px;">
+          <button onclick="convertMyToken()" style="padding:4px 12px;background:rgba(139,92,246,0.15);border:1px solid #8B5CF6;border-radius:6px;color:#8B5CF6;font-size:9px;cursor:pointer;">🔄 Convert</button>
+        </div>
+        <div style="font-size:8px;color:#666;">Click Convert → wallet confirm → auto receive gold</div>
       </div>`;
-    items.appendChild(div);
+    shopPanel.appendChild(div);
+  }
+  fetchConvertPrices();
+}
+updateShopUI = updateShopUIPatched;
+
+async function fetchConvertPrices() {
+  try {
+    const SERVER_URL = 'https://farborn-server.vercel.app';
+    const res = await fetch(`${SERVER_URL}/api/convert/prices`);
+    const data = await res.json();
+    const buyEl = document.getElementById('token-buy-price');
+    const sellEl = document.getElementById('token-sell-price');
+    const trendEl = document.getElementById('token-trend');
+    const usdEl = document.getElementById('token-usd-price');
+    
+    if (buyEl) buyEl.textContent = `Buy: 1 FARBORN = ${data.buyPrice.toLocaleString()} gold`;
+    if (sellEl) sellEl.textContent = `Sell: 1 FARBORN = ${data.sellPrice.toLocaleString()} gold`;
+    if (trendEl) trendEl.textContent = `${data.trend} (${data.recentBuys} buys / ${data.recentSells} sells)`;
+    
+    // Fetch USD price and show conversion
+    await fetchFarbornUsdPrice();
+    if (usdEl) {
+      const goldUsd = goldToUsd(1000, data.buyPrice);
+      usdEl.innerHTML = `
+        <div style="color:#ffd700;">$FARBORN ≈ $${farbornUsdPrice.toFixed(4)} USD</div>
+        <div style="color:#888;margin-top:2px;">1,000 Gold ≈ ${formatUsd(goldUsd)}</div>
+      `;
+    }
+  } catch (e) {}
+}
+
+async function fetchConvertPricesData() {
+  try {
+    const SERVER_URL = 'https://farborn-server.vercel.app';
+    const res = await fetch(`${SERVER_URL}/api/convert/prices`);
+    return await res.json();
+  } catch (e) {
+    return { buyPrice: 10000, sellPrice: 9000, trend: '➡️ stable', recentBuys: 0, recentSells: 0 };
   }
 }
 
+function copyAddr() {
+  navigator.clipboard.writeText('0x3e7994F6C55FC3FEcf3698e573aa22f463E99F02');
+  alert('Copied!');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CUSTOM MODAL SYSTEM (no browser alerts)
+// ═══════════════════════════════════════════════════════════
+function showModal(title, content, buttons = []) {
+  const existing = document.getElementById('game-modal');
+  if (existing) existing.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'game-modal';
+  modal.style.cssText = `
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+    background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;
+  `;
+  
+  const box = document.createElement('div');
+  box.style.cssText = `
+    background:linear-gradient(145deg,#1a1a2e,#16213e);border:1px solid #333;
+    border-radius:16px;padding:20px;max-width:380px;width:90%;max-height:80vh;overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  `;
+  
+  let html = `<div style="font-size:14px;font-weight:bold;color:#fff;margin-bottom:12px;">${title}</div>`;
+  html += `<div style="font-size:11px;color:#ccc;line-height:1.6;">${content}</div>`;
+  
+  if (buttons.length > 0) {
+    html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">';
+    for (const btn of buttons) {
+      const bgColor = btn.color || '#4caf50';
+      html += `<button onclick="${btn.onclick}" style="flex:1;padding:8px 12px;background:${bgColor}22;border:1px solid ${bgColor};border-radius:8px;color:${bgColor};font-size:11px;font-weight:bold;cursor:pointer;">${btn.text}</button>`;
+    }
+    html += '</div>';
+  }
+  
+  box.innerHTML = html;
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  
+  return modal;
+}
+
+function closeModal() {
+  const modal = document.getElementById('game-modal');
+  if (modal) modal.remove();
+}
+window.closeModal = closeModal;
+
+// ═══════════════════════════════════════════════════════════
+//  TOKEN PRICE (CoinGecko)
+// ═══════════════════════════════════════════════════════════
+let farbornUsdPrice = 0;
+let lastPriceFetch = 0;
+
+async function fetchFarbornUsdPrice() {
+  if (Date.now() - lastPriceFetch < 60000 && farbornUsdPrice > 0) return farbornUsdPrice;
+  try {
+    // Try CoinGecko for Base tokens
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=farborn&vs_currencies=usd');
+    const data = await res.json();
+    if (data.farborn?.usd) {
+      farbornUsdPrice = data.farborn.usd;
+      lastPriceFetch = Date.now();
+      return farbornUsdPrice;
+    }
+  } catch (e) {}
+  
+  // Fallback: estimate from LP pool (1 FARBORN = 0.0001 ETH, 1 ETH ≈ $3000)
+  farbornUsdPrice = 0.0001 * 3000; // $0.30
+  lastPriceFetch = Date.now();
+  return farbornUsdPrice;
+}
+
+function goldToUsd(goldAmount, buyPrice) {
+  // buyPrice = gold per 1 FARBORN
+  // 1 FARBORN = farbornUsdPrice USD
+  // So: goldAmount / buyPrice = FARBORN amount, * farbornUsdPrice = USD
+  const tokens = goldAmount / buyPrice;
+  return tokens * farbornUsdPrice;
+}
+
+function formatUsd(amount) {
+  if (amount < 0.01) return '<$0.01';
+  if (amount < 1) return `$${amount.toFixed(4)}`;
+  if (amount < 100) return `$${amount.toFixed(2)}`;
+  return `$${Math.floor(amount).toLocaleString()}`;
+}
+
+// Update bottom bar token info
+async function updateTokenInfoBar() {
+  const prices = await fetchConvertPricesData();
+  await fetchFarbornUsdPrice();
+  
+  const tibPrice = document.getElementById('tib-price');
+  const tibGold = document.getElementById('tib-gold');
+  
+  if (tibPrice) tibPrice.textContent = `🪙 $${farbornUsdPrice.toFixed(4)}`;
+  if (tibGold) {
+    const gold1kUsd = goldToUsd(1000, prices.buyPrice);
+    tibGold.textContent = `💰 1K Gold ≈ ${formatUsd(gold1kUsd)}`;
+  }
+}
+
+// Auto-refresh token info every 60s
+setInterval(updateTokenInfoBar, 60000);
+setTimeout(updateTokenInfoBar, 3000); // Initial load
+
+// ═══════════════════════════════════════════════════════════
+//  CONVERT: GOLD → FARBORN (with custom modal)
+// ═══════════════════════════════════════════════════════════
 async function convertMyGold(amount) {
-  if (state.gold < amount) { alert('Not enough gold!'); return; }
-  const result = await convertGold(amount, state.level);
-  if (result.error) { alert(result.error); return; }
-  state.gold -= result.goldSpent || amount;
-  addCombatLog(`💰 Converted ${result.goldSpent} gold → ${result.tokensClaimed} FARBORN`);
-  state.floatTexts.push({ text: `${result.tokensClaimed} FARBORN! 🪙`, y: canvas.height*0.35, color: '#ffd700', size: 18, life: 2, x: canvas.width/2 });
-  // Refresh prices
-  prices = await fetchPrices();
-  updatePriceDisplay();
+  if (state.gold < amount) {
+    showModal('⚠️ Insufficient Gold', `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:32px;margin-bottom:8px;">💰</div>
+        <div>You need <span style="color:#ffd700;font-weight:bold;">${amount.toLocaleString()} gold</span></div>
+        <div>You have <span style="color:${state.gold >= amount ? '#4caf50' : '#f44336'};">${state.gold.toLocaleString()} gold</span></div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+    return;
+  }
+  
+  const prices = await fetchConvertPricesData();
+  const tokenAmount = Math.floor(amount / prices.buyPrice);
+  const usdValue = goldToUsd(amount, prices.buyPrice);
+  
+  showModal('💰 Convert Gold → $FARBORN', `
+    <div style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">💰 → 🪙</div>
+      <div style="margin-bottom:12px;">
+        <span style="color:#ffd700;font-size:16px;font-weight:bold;">${amount.toLocaleString()}</span>
+        <span style="color:#888;"> gold</span>
+      </div>
+      <div style="font-size:20px;color:#4caf50;font-weight:bold;margin-bottom:8px;">= ${tokenAmount} FARBORN</div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px;">
+        ≈ ${formatUsd(usdValue)} USD • Rate: 1 FARBORN = ${prices.buyPrice.toLocaleString()} gold
+      </div>
+      <div style="padding:8px;background:rgba(255,152,0,0.1);border:1px solid #ff9800;border-radius:8px;font-size:9px;color:#ff9800;">
+        ⚡ Tokens sent to your wallet on Base<br>
+        ⛽ Treasury pays ETH gas for this transfer
+      </div>
+    </div>
+  `, [
+    { text: 'Cancel', onclick: 'closeModal()', color: '#666' },
+    { text: `Convert ${amount.toLocaleString()}G`, onclick: `doConvertGold(${amount})`, color: '#ffd700' }
+  ]);
 }
 window.convertMyGold = convertMyGold;
+
+async function doConvertGold(amount) {
+  closeModal();
+  const SERVER_URL = 'https://farborn-server.vercel.app';
+  const token = localStorage.getItem('farborn_auth_token');
+  const TREASURY = '0x3e7994F6C55FC3FEcf3698e573aa22f463E99F02';
+  
+  // Check wallet
+  const { getAccount } = await import('@wagmi/core');
+  const { wagmiConfig } = await import('./wallet.js');
+  const account = getAccount(wagmiConfig);
+  const wallet = account?.address;
+  if (!wallet) {
+    showModal('⚠️ No Wallet', `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">🔗</div>
+        <div>Connect your wallet first!</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+    return;
+  }
+  
+  // Step 1: Send ETH gas to treasury (~0.0001 ETH ≈ $0.30)
+  const ethAmountWei = '100000000000000'; // 0.0001 ETH
+  
+  showModal('⛽ Step 1: Send Gas', `
+    <div style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">⛽</div>
+      <div style="margin-bottom:8px;color:#ff9800;">You need to send ETH gas to treasury first</div>
+      <div style="padding:8px;background:rgba(255,152,0,0.1);border:1px solid #ff9800;border-radius:8px;font-size:9px;color:#ff9800;">
+        Amount: ~0.0001 ETH (~$0.30)<br>
+        This covers gas for treasury to send you FARBORN
+      </div>
+    </div>
+  `, [
+    { text: 'Cancel', onclick: 'closeModal()', color: '#666' },
+    { text: 'Send 0.0001 ETH', onclick: `doSendEthGas(${amount})`, color: '#ff9800' }
+  ]);
+}
+window.doConvertGold = doConvertGold;
+
+async function doSendEthGas(amount) {
+  closeModal();
+  const TREASURY = '0x3e7994F6C55FC3FEcf3698e573aa22f463E99F02';
+  const ethAmountWei = '100000000000000'; // 0.0001 ETH
+  
+  showModal('⏳ Sending ETH...', `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:28px;animation:pulse 1s infinite;">⛽</div>
+      <div style="margin-top:8px;color:#ff9800;">Please confirm in your wallet...</div>
+      <div style="font-size:9px;color:#888;margin-top:4px;">Sending 0.0001 ETH to treasury</div>
+    </div>
+  `, []);
+  
+  try {
+    const { sendTransaction } = await import('@wagmi/core');
+    
+    const txHash = await sendTransaction(wagmiConfig, {
+      to: TREASURY,
+      value: BigInt(ethAmountWei),
+      chainId: 8453
+    });
+    
+    // Step 2: Call server with ethTxHash
+    showModal('⏳ Converting Gold...', `
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-size:28px;animation:pulse 1s infinite;">⚡</div>
+        <div style="margin-top:8px;color:#ffd700;">Verifying ETH & converting gold...</div>
+        <div style="font-size:9px;color:#888;margin-top:4px;">TX: ${txHash.slice(0,20)}...</div>
+      </div>
+    `, []);
+    
+    const SERVER_URL = 'https://farborn-server.vercel.app';
+    const token = localStorage.getItem('farborn_auth_token');
+    
+    const res = await fetch(`${SERVER_URL}/api/convert/buy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ goldAmount: amount, ethTxHash: txHash })
+    });
+    const result = await res.json();
+    
+    if (result.error) {
+      showModal('❌ Conversion Failed', `
+        <div style="text-align:center;padding:10px 0;">
+          <div style="font-size:28px;margin-bottom:8px;">❌</div>
+          <div style="color:#f44336;">${result.error}</div>
+          <div style="font-size:9px;color:#888;margin-top:8px;">Your ETH was sent but conversion failed. Contact support.</div>
+        </div>
+      `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+      return;
+    }
+    
+    state.gold = result.newGoldBalance;
+    addCombatLog(`💰 ${result.goldSpent.toLocaleString()} gold → ${result.tokensReceived} FARBORN`);
+    state.floatTexts.push({ text: `${result.tokensReceived} FARBORN! 🪙`, y: canvas.height*0.35, color: '#ffd700', size: 18, life: 2, x: canvas.width/2 });
+    
+    showModal('✅ Success!', `
+      <div style="text-align:center;">
+        <div style="font-size:36px;margin-bottom:8px;">🎉</div>
+        <div style="font-size:18px;color:#4caf50;font-weight:bold;margin-bottom:8px;">+${result.tokensReceived} FARBORN</div>
+        <div style="font-size:11px;color:#888;margin-bottom:12px;">Sent to your wallet on Base</div>
+        <div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;font-size:9px;">
+          <div style="color:#666;">FARBORN TX</div>
+          <div style="color:#ffd700;word-break:break-all;">${result.txHash}</div>
+          <div style="color:#666;margin-top:4px;">Gas TX</div>
+          <div style="color:#ff9800;word-break:break-all;">${txHash}</div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#888;">
+          Gold: ${state.gold.toLocaleString()}G remaining
+        </div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal();fetchConvertPrices()', color: '#4caf50' }]);
+  } catch (err) {
+    showModal('❌ Error', `
+      <div style="text-align:center;color:#f44336;">
+        <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+        <div>${err.message}</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+  }
+}
+window.doSendEthGas = doSendEthGas;
+
+// ═══════════════════════════════════════════════════════════
+//  CONVERT: FARBORN → GOLD (with custom modal)
+// ═══════════════════════════════════════════════════════════
+async function convertMyToken() {
+  const amountInput = document.getElementById('convert-token-amount');
+  const amount = parseInt(amountInput?.value || '0');
+  if (!amount || amount <= 0) {
+    showModal('⚠️ Invalid Amount', `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">🪙</div>
+        <div>Enter amount of FARBORN to convert</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+    return;
+  }
+  
+  const SERVER_URL = 'https://farborn-server.vercel.app';
+  const token = localStorage.getItem('farborn_auth_token');
+  
+  const { getAccount } = await import('@wagmi/core');
+  const { wagmiConfig } = await import('./wallet.js');
+  const account = getAccount(wagmiConfig);
+  const wallet = account?.address;
+  if (!wallet) {
+    showModal('⚠️ No Wallet', `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">🔗</div>
+        <div>Connect your wallet first!</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+    return;
+  }
+  
+  const prices = await fetchConvertPricesData();
+  const goldReceived = Math.floor(amount * prices.sellPrice);
+  const usdValue = amount * farbornUsdPrice;
+  
+  showModal('🪙 Convert $FARBORN → Gold', `
+    <div style="text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🪙 → 💰</div>
+      <div style="margin-bottom:12px;">
+        <span style="color:#8B5CF6;font-size:16px;font-weight:bold;">${amount.toLocaleString()}</span>
+        <span style="color:#888;"> FARBORN</span>
+      </div>
+      <div style="font-size:20px;color:#ffd700;font-weight:bold;margin-bottom:8px;">= ${goldReceived.toLocaleString()} Gold</div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px;">
+        ≈ ${formatUsd(usdValue)} USD • Rate: 1 FARBORN = ${prices.sellPrice.toLocaleString()} gold
+      </div>
+      <div style="padding:8px;background:rgba(139,92,246,0.1);border:1px solid #8B5CF6;border-radius:8px;font-size:9px;color:#8B5CF6;">
+        ⛽ You'll pay ~0.00001 ETH gas for this transaction<br>
+        💰 Treasury sends gold to your in-game balance
+      </div>
+    </div>
+  `, [
+    { text: 'Cancel', onclick: 'closeModal()', color: '#666' },
+    { text: `Convert ${amount.toLocaleString()} FARBORN`, onclick: `doConvertToken(${amount})`, color: '#8B5CF6' }
+  ]);
+}
+window.convertMyToken = convertMyToken;
+
+async function doConvertToken(amount) {
+  closeModal();
+  const SERVER_URL = 'https://farborn-server.vercel.app';
+  const token = localStorage.getItem('farborn_auth_token');
+  
+  const FARBORN_SC = '0x4abD609B323ce6E7C0770E86d21E76BA00209DE2';
+  const TREASURY = '0x3e7994F6C55FC3FEcf3698e573aa22f463E99F02';
+  const decimals = 18;
+  const amountWei = (BigInt(amount) * BigInt(10) ** BigInt(decimals)).toString();
+  const data = '0xa9059cbb' + 
+    TREASURY.slice(2).toLowerCase().padStart(64, '0') +
+    BigInt(amountWei).toString(16).padStart(64, '0');
+  
+  const txParams = {
+    to: FARBORN_SC,
+    data: data,
+    value: 0n,
+    chainId: 8453
+  };
+  
+  showModal('⏳ Converting...', `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:28px;animation:pulse 1s infinite;">📤</div>
+      <div style="margin-top:8px;color:#8B5CF6;">Waiting for wallet confirmation...</div>
+      <div style="font-size:9px;color:#888;margin-top:4px;">Please confirm in your wallet</div>
+    </div>
+  `, []);
+  
+  try {
+    const { sendTransaction } = await import('@wagmi/core');
+    const txHash = await sendTransaction(wagmiConfig, txParams);
+    
+    showModal('⏳ Verifying...', `
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-size:28px;animation:pulse 1s infinite;">🔍</div>
+        <div style="margin-top:8px;color:#ffd700;">Verifying transaction...</div>
+        <div style="font-size:9px;color:#888;margin-top:4px;">TX: ${txHash.slice(0,20)}...</div>
+      </div>
+    `, []);
+    
+    const res = await fetch(`${SERVER_URL}/api/convert/sell`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ txHash })
+    });
+    const result = await res.json();
+    
+    if (result.error) {
+      showModal('❌ Verification Failed', `
+        <div style="text-align:center;padding:10px 0;">
+          <div style="font-size:28px;margin-bottom:8px;">❌</div>
+          <div style="color:#f44336;">${result.error}</div>
+          <div style="font-size:9px;color:#888;margin-top:8px;">Your tokens were sent but gold wasn't credited</div>
+        </div>
+      `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+      return;
+    }
+    
+    state.gold = result.newGoldBalance;
+    addCombatLog(`🪙 Converted ${result.tokenAmount} FARBORN → ${result.goldReceived} gold`);
+    state.floatTexts.push({ text: `+${result.goldReceived.toLocaleString()}G! 💰`, y: canvas.height*0.35, color: '#ffd700', size: 18, life: 2, x: canvas.width/2 });
+    amountInput.value = '';
+    
+    showModal('✅ Success!', `
+      <div style="text-align:center;">
+        <div style="font-size:36px;margin-bottom:8px;">🎉</div>
+        <div style="font-size:18px;color:#ffd700;font-weight:bold;margin-bottom:8px;">+${result.goldReceived.toLocaleString()} Gold</div>
+        <div style="font-size:11px;color:#888;margin-bottom:12px;">Added to your in-game balance</div>
+        <div style="padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;">
+          <div style="font-size:9px;color:#666;">TX Hash</div>
+          <div style="font-size:10px;color:#8B5CF6;word-break:break-all;">${txHash}</div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#888;">
+          Total gold: ${state.gold.toLocaleString()}G
+        </div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal();fetchConvertPrices()', color: '#4caf50' }]);
+  } catch (err) {
+    showModal('❌ Error', `
+      <div style="text-align:center;color:#f44336;">
+        <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+        <div>${err.message}</div>
+      </div>
+    `, [{ text: 'OK', onclick: 'closeModal()', color: '#666' }]);
+  }
+}
+window.doConvertToken = doConvertToken;
 
 // ─── Force reset: buka ?reset=1 ──────────────────────────
 if (window.location.search.includes('reset=1')) {

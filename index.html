@@ -234,12 +234,6 @@
 
     <!-- Bottom Bar -->
     <div id="bottom-bar">
-      <div class="upgrade-row" id="auto-upg-display">
-        <span style="font-size:8px;color:#888;">⚔️ <span id="upg-atk-lv">0</span></span>
-        <span style="font-size:8px;color:#888;">🛡️ <span id="upg-def-lv">0</span></span>
-        <span style="font-size:8px;color:#888;">❤️ <span id="upg-hp-lv">0</span></span>
-        <span style="font-size:8px;color:#888;">⚡ <span id="upg-spd-lv">0</span></span>
-      </div>
       <div class="prestige-row">
         <button id="stats-btn" onclick="toggleStats()">📊 Stats</button>
         <button id="shop-btn" onclick="toggleShop()" style="background:rgba(76,175,80,0.1);border:1px solid #4caf50;color:#4caf50;padding:4px 10px;border-radius:10px;font-size:9px;cursor:pointer;">🏪 Shop</button>
@@ -247,6 +241,12 @@
         <button id="nightmare-btn" onclick="toggleNightmare()" style="background:rgba(100,0,0,0.2);border:1px solid #f44336;color:#f44336;padding:4px 10px;border-radius:10px;font-size:9px;cursor:pointer;">💀 Nightmare</button>
         <button id="inv-btn" onclick="toggleInventory()">🎒 Bag (<span id="inv-count">0</span>/96)</button>
         <button id="lb-btn" onclick="toggleLeaderboard()" style="background:rgba(255,215,0,0.15);border:1px solid #ffd700;color:#ffd700;padding:4px 10px;border-radius:10px;font-size:9px;cursor:pointer;">🏆 Rank</button>
+      </div>
+      <div id="sc-copy" onclick="copyGameSC()" style="text-align:center;font-size:8px;color:#555;margin-top:4px;cursor:pointer;" title="Click to copy">$FARBORN: 0x4abD609B...0209DE2</div>
+      <div id="token-info-bar" style="display:flex;justify-content:center;gap:12px;font-size:8px;color:#888;margin-top:3px;">
+        <span id="tib-price">🪙 Loading...</span>
+        <span id="tib-gold">💰 1K Gold ≈ ...</span>
+        <span id="tib-gas">⛽ Gas: ~$0.30</span>
       </div>
     </div>
 
@@ -363,7 +363,7 @@
         <p id="gate-balance" style="color:#fff;font-size:14px;margin-bottom:16px;"></p>
         <button id="gate-start-btn" onclick="onStartGame()" style="display:none;padding:14px 28px;background:linear-gradient(135deg,#4caf50,#2e7d32);border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;">⚔️ Enter the Realm</button>
         <button id="gate-buy-btn" onclick="onBuyToken()" style="display:none;padding:14px 28px;background:linear-gradient(135deg,#8B5CF6,#6366f1);border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;">💰 Buy $FARBORN</button>
-        <p id="gate-sc" style="display:none;color:#888;font-size:10px;margin-top:12px;word-break:break-all;max-width:280px;background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;">SC: 0x4abD609B323ce6E7C0770E86d21E76BA00209DE2</p>
+        <p id="gate-sc" style="display:none;color:#888;font-size:10px;margin-top:12px;word-break:break-all;max-width:280px;background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;cursor:pointer;" onclick="copySC()" title="Click to copy">SC: 0x4abD609B323ce6E7C0770E86d21E76BA00209DE2</p>
       </div>
       <p id="gate-status" style="color:#aaa;font-size:12px;margin-top:12px;min-height:20px;text-align:center;max-width:300px;"></p>
     </div>

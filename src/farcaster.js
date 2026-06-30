@@ -184,7 +184,7 @@ export async function checkTokenGate() {
     });
     const data = await res.json();
     const balance = BigInt(data.result || '0x0');
-    tokenGateStatus = { hasAccess: balance >= BigInt('1000000000000000000000'), checked: true, balance: Number(balance / BigInt('1000000000000000000')), gate: 1000 };
+    tokenGateStatus = { hasAccess: balance >= BigInt('1000000000000000000000'), checked: true, balance: Number(balance / BigInt('1000000000000000000')), gate: 1000, swapUrl: 'https://app.uniswap.org/swap?chain=base&inputCurrency=ETH&outputCurrency=0x4abD609B323ce6E7C0770E86d21E76BA00209DE2' };
     return tokenGateStatus;
   } catch (err) {
     tokenGateStatus = { hasAccess: true, checked: true, error: err.message, bypass: true };

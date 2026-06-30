@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2a1a4a"/>
+      <stop offset="100%" stop-color="#0a0a2a"/>
+    </radialGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="50%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#bg)" rx="20"/>
+  <text x="100" y="85" text-anchor="middle" font-family="Arial" font-size="42" font-weight="bold" fill="url(#glow)">⚔️</text>
+  <text x="100" y="130" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold" fill="#fff">FARBORN</text>
+  <text x="100" y="155" text-anchor="middle" font-family="Arial" font-size="10" fill="#888">Born in the Far</text>
+</svg>

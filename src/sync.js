@@ -324,6 +324,7 @@ export async function syncFullState(state) {
         zoneKills: state.zoneKills,
         prestige: state.prestige,
         prestigeMult: state.prestigeMult,
+        potions: state.potions,
         ts: Date.now(),
       }),
     });
@@ -390,7 +391,12 @@ export function mergeStates(local, server) {
   
   // Zone: take higher
   merged.zone = Math.max(local.zone || 0, server.zone || 0);
-  
+
+  // Potions: client is source of truth (server stores JSON)
+  if (local.potions) {
+    merged.potions = local.potions;
+  }
+
   return merged;
 }
 

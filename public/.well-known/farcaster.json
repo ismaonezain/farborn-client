@@ -11,7 +11,6 @@
     "homeUrl": "https://farborn-client.vercel.app",
     "imageUrl": "https://raw.githubusercontent.com/ismaonezain/farborn-client/main/assets/og.svg",
     "buttonTitle": "Play Farborn",
-    "splashImageUrl": "https://raw.githubusercontent.com/ismaonezain/farborn-client/main/assets/icon.svg",
     "splashBackgroundColor": "#0a0a1a",
     "subtitle": "Idle RPG on Base Chain",
     "description": "Choose your hero, battle mobs, collect loot, forge equipment. Pure idle RPG on Base.",
