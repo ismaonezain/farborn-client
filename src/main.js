@@ -1506,194 +1506,27 @@ function drawPlayer() {
     }
   }
 
-  // --- ACCESSORY VISUALS (wings/tails) ---
+  // --- ACCESSORY VISUALS (SVG icon) ---
   const eqAcc = state.equipped.accessory
   if (eqAcc) {
-    const ac = eqAcc.rarityColor || '#aaa'
-    const accName = (eqAcc.name || '').toLowerCase()
-    const mt = time || 0
-    const isWing = accName.includes('wing') || accName.includes('feather')
-    const isTail = accName.includes('tail') || accName.includes('devil')
-    const isBat = accName.includes('bat')
-    const isBee = accName.includes('bee') || accName.includes('wasp')
-    const isButterfly = accName.includes('butterfly') || accName.includes('moth')
-    const isDragon = accName.includes('dragon')
-    const isWyvern = accName.includes('wyvern')
-    const isDevil = accName.includes('devil') || accName.includes('demon')
-    const isBurning = accName.includes('burn') || accName.includes('fire') || accName.includes('flame')
-    const isFairy = accName.includes('fairy') || accName.includes('pixie')
-    const isPhoenix = accName.includes('phoenix')
-    const isShadow = accName.includes('shadow')
-    
-    ctx.save()
-    const flutter = Math.sin(mt * 8) * 0.15
-    const flapSpeed = isBee ? 12 : isButterfly ? 6 : isFairy ? 10 : 8
-    const flap = Math.sin(mt * flapSpeed) * 0.25
-    
-    if (isWing || isBat || isBee || isButterfly || isDragon || isWyvern || isFairy || isPhoenix || isShadow) {
-      const wingSize = isDragon ? 1.4 : isWyvern ? 1.3 : isBat ? 1.2 : isBee ? 0.8 : isButterfly ? 1.1 : isFairy ? 0.7 : isPhoenix ? 1.3 : isShadow ? 1.1 : 1.0
-      const wingY = bodyTop + sz * 0.05
-      // LEFT WING
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.5
-      ctx.beginPath()
-      if (isBat || isDragon || isWyvern) {
-        ctx.moveTo(cx - sz*0.1, wingY)
-        ctx.quadraticCurveTo(cx - sz*0.8*wingSize, wingY - sz*0.6*wingSize + flap*sz*2, cx - sz*1.0*wingSize, wingY + sz*0.1 + flutter*sz)
-        ctx.quadraticCurveTo(cx - sz*0.7*wingSize, wingY - sz*0.3*wingSize + flap*sz, cx - sz*0.5*wingSize, wingY - sz*0.1*wingSize + flap*sz*0.5)
-        ctx.quadraticCurveTo(cx - sz*0.6*wingSize, wingY + sz*0.1 + flutter*sz*0.5, cx - sz*0.8*wingSize, wingY + sz*0.3 + flutter*sz)
-        ctx.quadraticCurveTo(cx - sz*0.5*wingSize, wingY + sz*0.15 + flutter*sz*0.3, cx - sz*0.3*wingSize, wingY + sz*0.2)
-        ctx.lineTo(cx - sz*0.1, wingY + sz*0.1)
-        ctx.closePath(); ctx.fill()
-        ctx.strokeStyle = ac; ctx.lineWidth = 1.5*s; ctx.globalAlpha = 0.6
-        ctx.beginPath()
-        ctx.moveTo(cx - sz*0.1, wingY); ctx.lineTo(cx - sz*0.8*wingSize, wingY - sz*0.5*wingSize + flap*sz*1.5)
-        ctx.moveTo(cx - sz*0.15, wingY + sz*0.05); ctx.lineTo(cx - sz*0.7*wingSize, wingY + sz*0.2 + flutter*sz*0.5)
-        ctx.stroke()
-      } else if (isBee) {
-        ctx.ellipse(cx - sz*0.45*wingSize, wingY - sz*0.15 + flap*sz*0.8, sz*0.35*wingSize, sz*0.15*wingSize, -0.3 + flutter, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.35; ctx.beginPath()
-        ctx.ellipse(cx - sz*0.35*wingSize, wingY + sz*0.05 + flap*sz*0.4, sz*0.25*wingSize, sz*0.1*wingSize, -0.2 + flutter*0.5, 0, Math.PI*2); ctx.fill()
-      } else if (isButterfly) {
-        ctx.ellipse(cx - sz*0.5*wingSize, wingY - sz*0.15 + flap*sz, sz*0.4*wingSize, sz*0.25*wingSize, -0.2 + flutter, 0, Math.PI*2); ctx.fill()
-        ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.3; ctx.beginPath()
-        ctx.arc(cx - sz*0.5*wingSize, wingY - sz*0.15 + flap*sz, sz*0.12*wingSize, 0, Math.PI*2); ctx.fill()
-        ctx.fillStyle = ac; ctx.globalAlpha = 0.4; ctx.beginPath()
-        ctx.ellipse(cx - sz*0.4*wingSize, wingY + sz*0.15 + flap*sz*0.5, sz*0.3*wingSize, sz*0.18*wingSize, -0.1 + flutter*0.5, 0, Math.PI*2); ctx.fill()
-      } else if (isFairy) {
-        ctx.globalAlpha = 0.35; ctx.beginPath()
-        ctx.ellipse(cx - sz*0.4*wingSize, wingY - sz*0.1 + flap*sz*0.7, sz*0.3*wingSize, sz*0.12*wingSize, -0.4 + flutter, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.25; ctx.beginPath()
-        ctx.ellipse(cx - sz*0.35*wingSize, wingY + sz*0.08 + flap*sz*0.4, sz*0.22*wingSize, sz*0.08*wingSize, -0.2 + flutter*0.5, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.15 + Math.sin(mt*4)*0.08; ctx.beginPath()
-        ctx.arc(cx - sz*0.4*wingSize, wingY - sz*0.05, sz*0.5*wingSize, 0, Math.PI*2); ctx.fillStyle = ac; ctx.fill()
-      } else if (isPhoenix) {
-        // Phoenix wing (flame-like, flowing)
-        ctx.moveTo(cx - sz*0.1, wingY)
-        ctx.quadraticCurveTo(cx - sz*0.7*wingSize, wingY - sz*0.7*wingSize + flap*sz*2, cx - sz*1.1*wingSize, wingY + sz*0.05 + flutter*sz)
-        ctx.quadraticCurveTo(cx - sz*0.8*wingSize, wingY - sz*0.2*wingSize + flap*sz, cx - sz*0.5*wingSize, wingY + sz*0.05 + flutter*sz*0.5)
-        ctx.quadraticCurveTo(cx - sz*0.6*wingSize, wingY + sz*0.2 + flutter*sz*0.3, cx - sz*0.3*wingSize, wingY + sz*0.15)
-        ctx.lineTo(cx - sz*0.1, wingY + sz*0.08)
-        ctx.closePath(); ctx.fill()
-        // Flame effect
-        ctx.globalAlpha = 0.3; ctx.fillStyle = '#ff6600'
-        for (let f = 0; f < 3; f++) {
-          ctx.beginPath()
-          ctx.arc(cx - sz*(0.5+f*0.15)*wingSize, wingY - sz*0.3*wingSize + f*sz*0.1 + flap*sz*(1-f*0.2), sz*0.08, 0, Math.PI*2)
-          ctx.fill()
-        }
-      } else if (isShadow) {
-        // Shadow wing (dark, wispy)
-        ctx.globalAlpha = 0.4
-        ctx.moveTo(cx - sz*0.1, wingY)
-        ctx.bezierCurveTo(cx - sz*0.5*wingSize, wingY - sz*0.4*wingSize + flap*sz*1.5, cx - sz*0.9*wingSize, wingY - sz*0.2*wingSize + flap*sz, cx - sz*1.0*wingSize, wingY + sz*0.15 + flutter*sz)
-        ctx.bezierCurveTo(cx - sz*0.7*wingSize, wingY + sz*0.1 + flutter*sz*0.5, cx - sz*0.4*wingSize, wingY + sz*0.2 + flutter*sz*0.3, cx - sz*0.1, wingY + sz*0.1)
-        ctx.closePath(); ctx.fill()
-        // Shadow particles
-        ctx.globalAlpha = 0.25
-        for (let p = 0; p < 4; p++) {
-          ctx.beginPath()
-          ctx.arc(cx - sz*(0.3+p*0.15)*wingSize, wingY + Math.sin(mt*3+p)*sz*0.1, sz*0.04, 0, Math.PI*2)
-          ctx.fill()
-        }
-      } else {
-        ctx.moveTo(cx - sz*0.1, wingY)
-        ctx.quadraticCurveTo(cx - sz*0.6*wingSize, wingY - sz*0.5*wingSize + flap*sz*1.5, cx - sz*0.9*wingSize, wingY + sz*0.2 + flutter*sz)
-        ctx.quadraticCurveTo(cx - sz*0.5*wingSize, wingY + sz*0.1 + flutter*sz*0.3, cx - sz*0.1, wingY + sz*0.15)
-        ctx.closePath(); ctx.fill()
+    const accSvg = getAccessoryVisual(eqAcc.name)
+    if (accSvg) {
+      const accImg = getSvgImage(accSvg)
+      const accSize = sz * 1.0
+      const accX = cx + sz * 0.5 - accSize / 2
+      const accY = bodyTop - sz * 0.2
+      ctx.globalAlpha = 0.85
+      ctx.drawImage(accImg, accX, accY, accSize, accSize)
+      // Rarity glow
+      if (eqAcc.rarity !== 'common' && eqAcc.rarity !== 'uncommon') {
+        ctx.globalAlpha = 0.2 + Math.sin(t * 2) * 0.08
+        ctx.shadowColor = eqAcc.rarityColor
+        ctx.shadowBlur = 8 * s
+        ctx.drawImage(accImg, accX, accY, accSize, accSize)
+        ctx.shadowBlur = 0
       }
-      // RIGHT WING (mirror)
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.5; ctx.beginPath()
-      if (isBat || isDragon || isWyvern) {
-        ctx.moveTo(cx + sz*0.9, wingY)
-        ctx.quadraticCurveTo(cx + sz*1.6*wingSize, wingY - sz*0.6*wingSize + flap*sz*2, cx + sz*1.8*wingSize, wingY + sz*0.1 + flutter*sz)
-        ctx.quadraticCurveTo(cx + sz*1.5*wingSize, wingY - sz*0.3*wingSize + flap*sz, cx + sz*1.3*wingSize, wingY - sz*0.1*wingSize + flap*sz*0.5)
-        ctx.quadraticCurveTo(cx + sz*1.4*wingSize, wingY + sz*0.1 + flutter*sz*0.5, cx + sz*1.6*wingSize, wingY + sz*0.3 + flutter*sz)
-        ctx.quadraticCurveTo(cx + sz*1.3*wingSize, wingY + sz*0.15 + flutter*sz*0.3, cx + sz*1.1*wingSize, wingY + sz*0.2)
-        ctx.lineTo(cx + sz*0.9, wingY + sz*0.1); ctx.closePath(); ctx.fill()
-      } else if (isBee) {
-        ctx.ellipse(cx + sz*1.25*wingSize, wingY - sz*0.15 + flap*sz*0.8, sz*0.35*wingSize, sz*0.15*wingSize, 0.3 - flutter, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.35; ctx.beginPath()
-        ctx.ellipse(cx + sz*1.15*wingSize, wingY + sz*0.05 + flap*sz*0.4, sz*0.25*wingSize, sz*0.1*wingSize, 0.2 - flutter*0.5, 0, Math.PI*2); ctx.fill()
-      } else if (isButterfly) {
-        ctx.ellipse(cx + sz*1.3*wingSize, wingY - sz*0.15 + flap*sz, sz*0.4*wingSize, sz*0.25*wingSize, 0.2 - flutter, 0, Math.PI*2); ctx.fill()
-        ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.3; ctx.beginPath()
-        ctx.arc(cx + sz*1.3*wingSize, wingY - sz*0.15 + flap*sz, sz*0.12*wingSize, 0, Math.PI*2); ctx.fill()
-        ctx.fillStyle = ac; ctx.globalAlpha = 0.4; ctx.beginPath()
-        ctx.ellipse(cx + sz*1.2*wingSize, wingY + sz*0.15 + flap*sz*0.5, sz*0.3*wingSize, sz*0.18*wingSize, 0.1 - flutter*0.5, 0, Math.PI*2); ctx.fill()
-      } else if (isFairy) {
-        ctx.globalAlpha = 0.35; ctx.beginPath()
-        ctx.ellipse(cx + sz*1.2*wingSize, wingY - sz*0.1 + flap*sz*0.7, sz*0.3*wingSize, sz*0.12*wingSize, 0.4 - flutter, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.25; ctx.beginPath()
-        ctx.ellipse(cx + sz*1.15*wingSize, wingY + sz*0.08 + flap*sz*0.4, sz*0.22*wingSize, sz*0.08*wingSize, 0.2 - flutter*0.5, 0, Math.PI*2); ctx.fill()
-        ctx.globalAlpha = 0.15 + Math.sin(mt*4)*0.08; ctx.beginPath()
-        ctx.arc(cx + sz*1.2*wingSize, wingY - sz*0.05, sz*0.5*wingSize, 0, Math.PI*2); ctx.fillStyle = ac; ctx.fill()
-      } else if (isPhoenix) {
-        // Phoenix wing right (mirror)
-        ctx.moveTo(cx + sz*0.9, wingY)
-        ctx.quadraticCurveTo(cx + sz*1.5*wingSize, wingY - sz*0.7*wingSize + flap*sz*2, cx + sz*1.9*wingSize, wingY + sz*0.05 + flutter*sz)
-        ctx.quadraticCurveTo(cx + sz*1.6*wingSize, wingY - sz*0.2*wingSize + flap*sz, cx + sz*1.3*wingSize, wingY + sz*0.05 + flutter*sz*0.5)
-        ctx.quadraticCurveTo(cx + sz*1.4*wingSize, wingY + sz*0.2 + flutter*sz*0.3, cx + sz*1.1*wingSize, wingY + sz*0.15)
-        ctx.lineTo(cx + sz*0.9, wingY + sz*0.08)
-        ctx.closePath(); ctx.fill()
-        ctx.globalAlpha = 0.3; ctx.fillStyle = '#ff6600'
-        for (let f = 0; f < 3; f++) {
-          ctx.beginPath()
-          ctx.arc(cx + sz*(1.3+f*0.15)*wingSize, wingY - sz*0.3*wingSize + f*sz*0.1 + flap*sz*(1-f*0.2), sz*0.08, 0, Math.PI*2)
-          ctx.fill()
-        }
-      } else if (isShadow) {
-        // Shadow wing right (mirror)
-        ctx.globalAlpha = 0.4
-        ctx.moveTo(cx + sz*0.9, wingY)
-        ctx.bezierCurveTo(cx + sz*1.3*wingSize, wingY - sz*0.4*wingSize + flap*sz*1.5, cx + sz*1.7*wingSize, wingY - sz*0.2*wingSize + flap*sz, cx + sz*1.8*wingSize, wingY + sz*0.15 + flutter*sz)
-        ctx.bezierCurveTo(cx + sz*1.5*wingSize, wingY + sz*0.1 + flutter*sz*0.5, cx + sz*1.2*wingSize, wingY + sz*0.2 + flutter*sz*0.3, cx + sz*0.9, wingY + sz*0.1)
-        ctx.closePath(); ctx.fill()
-        ctx.globalAlpha = 0.25
-        for (let p = 0; p < 4; p++) {
-          ctx.beginPath()
-          ctx.arc(cx + sz*(1.1+p*0.15)*wingSize, wingY + Math.sin(mt*3+p)*sz*0.1, sz*0.04, 0, Math.PI*2)
-          ctx.fill()
-        }
-      } else {
-        ctx.moveTo(cx + sz*0.9, wingY)
-        ctx.quadraticCurveTo(cx + sz*1.4*wingSize, wingY - sz*0.5*wingSize + flap*sz*1.5, cx + sz*1.7*wingSize, wingY + sz*0.2 + flutter*sz)
-        ctx.quadraticCurveTo(cx + sz*1.3*wingSize, wingY + sz*0.1 + flutter*sz*0.3, cx + sz*0.9, wingY + sz*0.15)
-        ctx.closePath(); ctx.fill()
-      }
+      ctx.globalAlpha = 1
     }
-    if (isTail || isDevil || isBurning) {
-      const tailStartX = cx + sz * 0.6, tailStartY = bodyBot + sz * 0.1
-      const tailWag = Math.sin(mt * 4) * sz * 0.15
-      if (isDevil || isBurning) {
-        ctx.strokeStyle = isBurning ? '#ff4400' : ac; ctx.lineWidth = 3.5 * s; ctx.globalAlpha = 0.85
-        ctx.beginPath()
-        ctx.moveTo(tailStartX, tailStartY)
-        ctx.quadraticCurveTo(tailStartX + sz*0.4, tailStartY + sz*0.2 + tailWag, tailStartX + sz*0.7, tailStartY - sz*0.1 + tailWag*1.5)
-        ctx.quadraticCurveTo(tailStartX + sz*0.85, tailStartY - sz*0.3 + tailWag*1.2, tailStartX + sz*0.75, tailStartY - sz*0.5 + tailWag*0.8)
-        ctx.stroke()
-        ctx.fillStyle = isBurning ? '#ff4400' : ac; ctx.globalAlpha = 0.9; ctx.beginPath()
-        const tipX = tailStartX + sz*0.75, tipY = tailStartY - sz*0.5 + tailWag*0.8
-        ctx.moveTo(tipX, tipY - sz*0.12); ctx.lineTo(tipX - sz*0.08, tipY + sz*0.06); ctx.lineTo(tipX, tipY + sz*0.02); ctx.lineTo(tipX + sz*0.08, tipY + sz*0.06)
-        ctx.closePath(); ctx.fill()
-        if (isBurning) {
-          for (let p = 0; p < 3; p++) {
-            const px = tipX + Math.sin(mt*6+p*2)*sz*0.1, py = tipY - sz*0.1 - Math.abs(Math.sin(mt*5+p*1.5))*sz*0.2
-            ctx.fillStyle = p === 0 ? '#ff6600' : p === 1 ? '#ffaa00' : '#ff4400'
-            ctx.globalAlpha = 0.6 - p*0.15; ctx.beginPath()
-            ctx.arc(px, py, sz*0.04*(3-p), 0, Math.PI*2); ctx.fill()
-          }
-        }
-      } else {
-        ctx.strokeStyle = ac; ctx.lineWidth = 3 * s; ctx.globalAlpha = 0.75
-        ctx.beginPath()
-        ctx.moveTo(tailStartX, tailStartY)
-        ctx.quadraticCurveTo(tailStartX + sz*0.5, tailStartY + sz*0.3 + tailWag, tailStartX + sz*0.8, tailStartY + tailWag*1.2)
-        ctx.stroke()
-        ctx.fillStyle = ac; ctx.globalAlpha = 0.7; ctx.beginPath()
-        ctx.arc(tailStartX + sz*0.8, tailStartY + tailWag*1.2, sz*0.06, 0, Math.PI*2); ctx.fill()
-      }
-    }
-    ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.restore()
   }
 
   // --- ARMS ---
