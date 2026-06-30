@@ -5371,14 +5371,14 @@ async function initApp() {
 
   if (gate.hasAccess) {
     // ✅ Hold enough — auto-start
-    if (balEl) balEl.innerHTML = `✅ <span style="color:#4caf50;font-weight:bold;">${gate.balance.toLocaleString()} $FARBORN</span>`;
+    if (balEl) balEl.innerHTML = gate.bypass ? '✅ <span style="color:#4caf50;font-weight:bold;">Welcome!</span>' : `✅ <span style="color:#4caf50;font-weight:bold;">${(gate.balance||0).toLocaleString()} $FARBORN</span>`;
     if (startBtn) startBtn.style.display = 'none';
     if (buyBtn) buyBtn.style.display = 'none';
     if (scEl) scEl.style.display = 'none';
     setTimeout(() => onStartGame(), 500);
   } else {
     // ❌ Not enough — show Buy + Swap link
-    if (balEl) balEl.innerHTML = `❌ <span style="color:#f44336;font-weight:bold;">${(gate.balance || 0).toLocaleString()} / 1,000 $FARBORN</span>`;
+    if (balEl) balEl.innerHTML = gate.bypass ? '❌ <span style="color:#f44336;font-weight:bold;">Access required</span>' : `❌ <span style="color:#f44336;font-weight:bold;">${(gate.balance || 0).toLocaleString()} / 1,000 $FARBORN</span>`;
     if (startBtn) startBtn.style.display = 'none';
     if (buyBtn) buyBtn.style.display = 'block';
     if (scEl) scEl.style.display = 'block';
