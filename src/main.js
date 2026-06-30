@@ -211,6 +211,26 @@ const EQUIP_TYPES = {
   accessory: { name:'Accessory', slot:'accessory', emoji:'✨' }
 }
 
+// ─── SVG Image Cache for Canvas Drawing ─────────────────
+const _svgImgCache = {}
+function getSvgImage(svgString) {
+  if (_svgImgCache[svgString]) return _svgImgCache[svgString]
+  const img = new Image()
+  img.src = 'data:image/svg+xml,' + encodeURIComponent(svgString)
+  _svgImgCache[svgString] = img
+  return img
+}
+function tintSvgImage(svgString, tintColor) {
+  const key = svgString + '|' + tintColor
+  if (_svgImgCache[key]) return _svgImgCache[key]
+  // Add rarity color tint via CSS filter approximation
+  const tinted = svgString.replace('<svg ', `<svg style="filter:drop-shadow(0 0 3px ${tintColor})" `)
+  const img = new Image()
+  img.src = 'data:image/svg+xml,' + encodeURIComponent(tinted)
+  _svgImgCache[key] = img
+  return img
+}
+
 // Hero-specific weapon SVGs (unique per hero class)
 const HERO_WEAPONS = {
   warrior: {
@@ -1344,96 +1364,26 @@ function drawPlayer() {
   const bodyX = cx + sz*(1-bodyW)/2
   
   if (eqArmor) {
-    // EQUIPPED ARMOR: Class-specific armor visual
-    const ac = eqArmor.rarityColor || '#888'
-    if (state.hero.id === 'warrior') {
-      // Heavy plate armor
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.85
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.05, bodyTop); ctx.quadraticCurveTo(bodyX, bodyTop+sz*0.2, bodyX+sz*0.02, bodyBot)
-      ctx.lineTo(bodyX+bodyW*sz-0.02*sz, bodyBot)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW, bodyTop+sz*0.2, bodyX+sz*bodyW-0.05*sz, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Shoulder plates
-      ctx.fillRect(bodyX-sz*0.08, bodyTop+sz*0.02, sz*0.18, sz*0.12)
-      ctx.fillRect(bodyX+bodyW*sz-sz*0.1, bodyTop+sz*0.02, sz*0.18, sz*0.12)
-      // Chest plate line
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5*s
-      ctx.beginPath(); ctx.moveTo(bodyX+sz*bodyW/2, bodyTop+sz*0.05); ctx.lineTo(bodyX+sz*bodyW/2, bodyTop+sz*0.35); ctx.stroke()
-      ctx.globalAlpha = 1
-    } else if (state.hero.id === 'mage') {
-      // Flowing robes
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.8
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.05, bodyTop); ctx.quadraticCurveTo(bodyX-sz*0.05, bodyTop+sz*0.3, bodyX-sz*0.08, bodyBot+sz*0.15)
-      ctx.lineTo(bodyX+bodyW*sz+sz*0.08, bodyBot+sz*0.15)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW+sz*0.05, bodyTop+sz*0.3, bodyX+sz*bodyW-0.05*sz, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Magic runes
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1*s; ctx.globalAlpha = 0.4
-      ctx.beginPath(); ctx.arc(bodyX+sz*bodyW/2, bodyTop+sz*0.2, sz*0.08, 0, Math.PI*2); ctx.stroke()
-      ctx.globalAlpha = 1
-    } else if (state.hero.id === 'rogue') {
-      // Leather armor
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.85
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.08, bodyTop); ctx.quadraticCurveTo(bodyX+sz*0.03, bodyTop+sz*0.15, bodyX+sz*0.04, bodyBot)
-      ctx.lineTo(bodyX+bodyW*sz-sz*0.04, bodyBot)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW-sz*0.03, bodyTop+sz*0.15, bodyX+sz*bodyW-sz*0.08, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Belt straps
-      ctx.strokeStyle = '#3d2b1f'; ctx.lineWidth = 2*s; ctx.globalAlpha = 0.7
-      ctx.beginPath(); ctx.moveTo(bodyX+sz*0.1, bodyTop+sz*0.25); ctx.lineTo(bodyX+sz*bodyW-sz*0.1, bodyTop+sz*0.35); ctx.stroke()
-      ctx.globalAlpha = 1
-    } else if (state.hero.id === 'ranger') {
-      // Leather + fur trim
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.85
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.06, bodyTop); ctx.quadraticCurveTo(bodyX+sz*0.01, bodyTop+sz*0.18, bodyX+sz*0.03, bodyBot)
-      ctx.lineTo(bodyX+bodyW*sz-sz*0.03, bodyBot)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW-sz*0.01, bodyTop+sz*0.18, bodyX+sz*bodyW-sz*0.06, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Fur collar
-      ctx.fillStyle = '#8d6e63'; ctx.globalAlpha = 0.6
-      ctx.beginPath()
-      ctx.ellipse(bodyX+sz*bodyW/2, bodyTop+sz*0.03, sz*bodyW*0.45, sz*0.06, 0, 0, Math.PI*2)
-      ctx.fill()
-      ctx.globalAlpha = 1
-    } else if (state.hero.id === 'paladin') {
-      // Holy plate with cross
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.9
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.04, bodyTop); ctx.quadraticCurveTo(bodyX-sz*0.01, bodyTop+sz*0.2, bodyX+sz*0.02, bodyBot)
-      ctx.lineTo(bodyX+bodyW*sz-sz*0.02, bodyBot)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW+sz*0.01, bodyTop+sz*0.2, bodyX+sz*bodyW-sz*0.04, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Holy cross on chest
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5*s; ctx.globalAlpha = 0.7
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*bodyW/2, bodyTop+sz*0.08)
-      ctx.lineTo(bodyX+sz*bodyW/2, bodyTop+sz*0.32)
-      ctx.moveTo(bodyX+sz*bodyW*0.3, bodyTop+sz*0.18)
-      ctx.lineTo(bodyX+sz*bodyW*0.7, bodyTop+sz*0.18)
-      ctx.stroke()
-      // Shoulder plates
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.85
-      ctx.fillRect(bodyX-sz*0.06, bodyTop+sz*0.02, sz*0.16, sz*0.1)
-      ctx.fillRect(bodyX+bodyW*sz-sz*0.1, bodyTop+sz*0.02, sz*0.16, sz*0.1)
-      ctx.globalAlpha = 1
-    } else {
-      // Necromancer: dark robes
-      ctx.fillStyle = ac; ctx.globalAlpha = 0.85
-      ctx.beginPath()
-      ctx.moveTo(bodyX+sz*0.05, bodyTop); ctx.quadraticCurveTo(bodyX-sz*0.08, bodyTop+sz*0.35, bodyX-sz*0.12, bodyBot+sz*0.2)
-      ctx.lineTo(bodyX+bodyW*sz+sz*0.12, bodyBot+sz*0.2)
-      ctx.quadraticCurveTo(bodyX+sz*bodyW+sz*0.08, bodyTop+sz*0.35, bodyX+sz*bodyW-sz*0.05, bodyTop)
-      ctx.closePath(); ctx.fill()
-      // Skull emblem
-      ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.3
-      ctx.beginPath(); ctx.arc(bodyX+sz*bodyW/2, bodyTop+sz*0.2, sz*0.06, 0, Math.PI*2); ctx.fill()
+    // EQUIPPED ARMOR: SVG icon
+    const armorSvg = EQUIP_TYPES.armor?.svg
+    if (armorSvg) {
+      const armorImg = getSvgImage(armorSvg)
+      const armorW = bodyW * sz * 1.2
+      const armorH = (bodyBot - bodyTop) * 1.1
+      ctx.globalAlpha = 0.9
+      ctx.drawImage(armorImg, bodyX - sz*0.08, bodyTop - sz*0.05, armorW, armorH)
+      // Rarity glow
+      if (eqArmor.rarity !== 'common' && eqArmor.rarity !== 'uncommon') {
+        ctx.globalAlpha = 0.2 + Math.sin(t*2)*0.08
+        ctx.shadowColor = eqArmor.rarityColor
+        ctx.shadowBlur = 8*s
+        ctx.drawImage(armorImg, bodyX - sz*0.08, bodyTop - sz*0.05, armorW, armorH)
+        ctx.shadowBlur = 0
+      }
       ctx.globalAlpha = 1
     }
     // Belt
+    const ac = eqArmor.rarityColor || '#888'
     ctx.fillStyle = '#1a1a1a'; ctx.fillRect(bodyX, bodyBot-sz*0.08, sz*bodyW, sz*0.08)
     ctx.fillStyle = ac; ctx.globalAlpha = 0.7
     ctx.beginPath(); ctx.roundRect(bodyX+sz*bodyW*0.4, bodyBot-sz*0.12, sz*bodyW*0.2, sz*0.16, 3*s); ctx.fill()
@@ -1489,57 +1439,71 @@ function drawPlayer() {
   // --- EQUIPPED ITEM VISUALS (helmet/boots/accessory) ---
   const eqHelmet = state.equipped.helmet
   const eqBoots = state.equipped.boots
-  // Helmet visual on head
+  // Helmet visual on head — SVG icon
   if (eqHelmet) {
-    const hc = eqHelmet.rarityColor || '#888'
-    ctx.fillStyle = hc; ctx.globalAlpha = 0.6
-    // Crown/helm shape on head
-    ctx.beginPath()
-    ctx.moveTo(hx-hr*0.9, hy-hr*0.1)
-    ctx.lineTo(hx-hr*0.7, hy-hr*1.1)
-    ctx.lineTo(hx-hr*0.3, hy-hr*0.8)
-    ctx.lineTo(hx, hy-hr*1.2)
-    ctx.lineTo(hx+hr*0.3, hy-hr*0.8)
-    ctx.lineTo(hx+hr*0.7, hy-hr*1.1)
-    ctx.lineTo(hx+hr*0.9, hy-hr*0.1)
-    ctx.quadraticCurveTo(hx+hr*1.1, hy+hr*0.3, hx+hr*0.9, hy+hr*0.5)
-    ctx.lineTo(hx-hr*0.9, hy+hr*0.5)
-    ctx.quadraticCurveTo(hx-hr*1.1, hy+hr*0.3, hx-hr*0.9, hy-hr*0.1)
-    ctx.fill()
-    // Helmet rim
-    ctx.strokeStyle = hc; ctx.lineWidth = 1.5*s; ctx.globalAlpha = 0.8
-    ctx.beginPath()
-    ctx.moveTo(hx-hr*1.0, hy+hr*0.5)
-    ctx.lineTo(hx+hr*1.0, hy+hr*0.5)
-    ctx.stroke()
-    // Visor slit
-    ctx.fillStyle = '#1a1a2e'; ctx.globalAlpha = 0.8
-    ctx.fillRect(hx-hr*0.5, hy-hr*0.05, hr*1, hr*0.14)
-    ctx.globalAlpha = 1; ctx.lineWidth = 1
+    const helmSvg = EQUIP_TYPES.helmet?.svg
+    if (helmSvg) {
+      const helmImg = getSvgImage(helmSvg)
+      const helmSize = hr * 2.4 * s
+      ctx.globalAlpha = 0.9
+      ctx.drawImage(helmImg, hx - helmSize/2, hy - hr*1.1, helmSize, helmSize)
+      // Rarity glow
+      if (eqHelmet.rarity !== 'common' && eqHelmet.rarity !== 'uncommon') {
+        ctx.globalAlpha = 0.25 + Math.sin(t*2)*0.1
+        ctx.shadowColor = eqHelmet.rarityColor
+        ctx.shadowBlur = 8*s
+        ctx.drawImage(helmImg, hx - helmSize/2, hy - hr*1.1, helmSize, helmSize)
+        ctx.shadowBlur = 0
+      }
+      ctx.globalAlpha = 1
+    }
   }
-  // Boot highlights — BOLD and visible
+  // Boot highlights — SVG icon
   if (eqBoots) {
-    const bc = eqBoots.rarityColor || '#888'
-    // Left boot fill
-    ctx.fillStyle = bc; ctx.globalAlpha = 0.65
-    ctx.fillRect(cx+sz*0.20+lThighX+kneeOff*0.5, bodyBot+sz*0.40-walkBob+kneeOff*0.3, sz*0.28, sz*0.12)
-    // Right boot fill
-    ctx.fillRect(cx+sz*0.52+rThighX+ankleOff*0.5, bodyBot+sz*0.40-walkBob+ankleOff*0.3, sz*0.28, sz*0.12)
-    // Boot outline (thick)
-    ctx.strokeStyle = bc; ctx.lineWidth = 2.5*s; ctx.globalAlpha = 0.85
-    ctx.strokeRect(cx+sz*0.20+lThighX+kneeOff*0.5, bodyBot+sz*0.40-walkBob+kneeOff*0.3, sz*0.28, sz*0.12)
-    ctx.strokeRect(cx+sz*0.52+rThighX+ankleOff*0.5, bodyBot+sz*0.40-walkBob+ankleOff*0.3, sz*0.28, sz*0.12)
-    // Boot top trim band
-    ctx.strokeStyle = bc; ctx.lineWidth = 1.5*s; ctx.globalAlpha = 0.5
-    ctx.beginPath()
-    ctx.moveTo(cx+sz*0.20+lThighX+kneeOff*0.5, bodyBot+sz*0.42-walkBob+kneeOff*0.3)
-    ctx.lineTo(cx+sz*0.48+lThighX+kneeOff*0.5, bodyBot+sz*0.42-walkBob+kneeOff*0.3)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(cx+sz*0.52+rThighX+ankleOff*0.5, bodyBot+sz*0.42-walkBob+ankleOff*0.3)
-    ctx.lineTo(cx+sz*0.80+rThighX+ankleOff*0.5, bodyBot+sz*0.42-walkBob+ankleOff*0.3)
-    ctx.stroke()
-    ctx.globalAlpha = 1; ctx.lineWidth = 1
+    const bootSvg = EQUIP_TYPES.boots?.svg
+    if (bootSvg) {
+      const bootImg = getSvgImage(bootSvg)
+      const bootW = sz * 0.32, bootH = sz * 0.22
+      // Left boot
+      ctx.globalAlpha = 0.9
+      ctx.drawImage(bootImg, cx+sz*0.18+lThighX+kneeOff*0.5, bodyBot+sz*0.36-walkBob+kneeOff*0.3, bootW, bootH)
+      // Right boot
+      ctx.drawImage(bootImg, cx+sz*0.50+rThighX+ankleOff*0.5, bodyBot+sz*0.36-walkBob+ankleOff*0.3, bootW, bootH)
+      // Rarity glow
+      if (eqBoots.rarity !== 'common' && eqBoots.rarity !== 'uncommon') {
+        ctx.globalAlpha = 0.2 + Math.sin(t*2)*0.08
+        ctx.shadowColor = eqBoots.rarityColor
+        ctx.shadowBlur = 6*s
+        ctx.drawImage(bootImg, cx+sz*0.18+lThighX+kneeOff*0.5, bodyBot+sz*0.36-walkBob+kneeOff*0.3, bootW, bootH)
+        ctx.drawImage(bootImg, cx+sz*0.50+rThighX+ankleOff*0.5, bodyBot+sz*0.36-walkBob+ankleOff*0.3, bootW, bootH)
+        ctx.shadowBlur = 0
+      }
+      ctx.globalAlpha = 1; ctx.lineWidth = 1
+    }
+  }
+
+  // --- RING VISUAL (SVG icon on hand) ---
+  const eqRing = state.equipped.ring
+  if (eqRing) {
+    const ringSvg = EQUIP_TYPES.ring?.svg
+    if (ringSvg) {
+      const ringImg = getSvgImage(ringSvg)
+      const ringSize = sz * 0.28
+      // Draw ring on weapon hand (right side of body)
+      const ringX = cx + sz * 0.7
+      const ringY = bodyTop + sz * 0.25 + (walk ? walkCycle * 2 * s : 0)
+      ctx.globalAlpha = 0.85
+      ctx.drawImage(ringImg, ringX - ringSize/2, ringY - ringSize/2, ringSize, ringSize)
+      // Rarity glow
+      if (eqRing.rarity !== 'common' && eqRing.rarity !== 'uncommon') {
+        ctx.globalAlpha = 0.3 + Math.sin(t*3)*0.1
+        ctx.shadowColor = eqRing.rarityColor
+        ctx.shadowBlur = 5*s
+        ctx.drawImage(ringImg, ringX - ringSize/2, ringY - ringSize/2, ringSize, ringSize)
+        ctx.shadowBlur = 0
+      }
+      ctx.globalAlpha = 1
+    }
   }
 
   // --- ACCESSORY VISUALS (wings/tails) ---
@@ -1853,83 +1817,56 @@ function drawPlayer() {
   // Hand/glove
   ctx.fillStyle = '#2a1a0a'; ctx.fillRect(-sz*0.07, sz*0.28, sz*0.14, sz*0.08)
 
-  // --- WEAPON ---
+  // --- WEAPON: SVG icon ---
   ctx.translate(0, sz*0.06)
   const wid = state.hero.id
-  const eqWpnColor = state.equipped.weapon ? state.equipped.weapon.rarityColor : '#b0bec5'
-  if (wid === 'warrior') {
-    // Warrior: sword only visible when slashing down (matk <= 10)
-    if (matk > 0 && matk <= 10) {
-      const swordLen = sz * 0.9
-      const swordW = sz * 0.1
-      // Blade — rarity color
-      ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.85
-      ctx.beginPath()
-      ctx.moveTo(-swordW * 0.5, sz * 0.15)
-      ctx.lineTo(swordW * 0.5, sz * 0.15)
-      ctx.lineTo(swordW * 0.3, sz * 0.15 + swordLen)
-      ctx.lineTo(-swordW * 0.3, sz * 0.15 + swordLen)
-      ctx.fill()
-      // Blade edge shine
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.globalAlpha = 1
-      ctx.fillRect(-swordW * 0.1, sz * 0.2, swordW * 0.15, swordLen * 0.8)
-      // Guard
-      ctx.fillStyle = d.armorTrim
-      ctx.beginPath()
-      ctx.roundRect(-sz * 0.12, sz * 0.1, sz * 0.26, sz * 0.08, 2 * s)
-      ctx.fill()
-      // Hilt
-      ctx.fillStyle = '#5d4037'
-      ctx.fillRect(-sz * 0.025, sz * -0.05, sz * 0.06, sz * 0.2)
-      // Pommel
-      ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.9
-      ctx.beginPath()
-      ctx.arc(sz * 0.005, sz * -0.06, sz * 0.04, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = 1
+  const eqWpn = state.equipped.weapon
+  const wpnSvg = HERO_WEAPONS[wid]?.svg
+  if (wpnSvg) {
+    const wpnImg = getSvgImage(wpnSvg)
+    const wpnSize = sz * 0.55
+    // Position weapon based on class
+    let wpnX = -wpnSize * 0.4
+    let wpnY = sz * 0.05
+    let wpnRot = 0
+    if (wid === 'warrior') {
+      // Sword only visible when attacking
+      if (matk > 0 && matk <= 10) {
+        wpnRot = 0.3 + (matk / 10) * 0.5
+        wpnY = sz * 0.1
+      } else {
+        wpnX = sz * 0.3  // hidden behind body when idle
+        wpnY = sz * 0.4
+        wpnRot = 0.8
+      }
+    } else if (wid === 'mage') {
+      wpnX = -sz * 0.15
+      wpnY = -sz * 0.4
+      wpnSize = sz * 0.6
+    } else if (wid === 'ranger') {
+      wpnX = sz * 0.1
+      wpnY = sz * 0.15
+      wpnRot = -0.2
+    } else if (wid === 'necromancer') {
+      wpnX = sz * 0.15
+      wpnY = sz * 0.0
+      wpnRot = -0.3
     }
-  } else if (wid === 'mage') {
-    ctx.fillStyle = '#5d4037'; ctx.fillRect(-sz*0.01, sz*-0.65, sz*0.05, sz*1.0) // staff
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(-sz*0.01, sz*-0.72, sz*0.15, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1
-    ctx.fillStyle = '#e1bee7'; ctx.beginPath(); ctx.arc(-sz*0.01, sz*-0.72, sz*0.09, 0, Math.PI*2); ctx.fill()
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sz*0.03, sz*-0.76, sz*0.03, 0, Math.PI*2); ctx.fill()
-  } else if (wid === 'rogue') {
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.85; ctx.fillRect(sz*0.01, sz*0.25, sz*0.05, sz*0.5); ctx.globalAlpha = 1
-    ctx.fillStyle = '#cfd8dc'; ctx.fillRect(-sz*0.04, sz*0.22, sz*0.15, sz*0.08)
-    ctx.fillStyle = '#5d4037'; ctx.fillRect(sz*0.02, sz*0.7, sz*0.03, sz*0.1)
-  } else if (wid === 'ranger') {
-    // Bow body (curved wood)
-    ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 3 * s
-    ctx.beginPath(); ctx.arc(sz * 0.04, sz * 0.35, sz * 0.25, -1.4, 1.2); ctx.stroke()
-    // Bow tips
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.7
-    ctx.beginPath(); ctx.arc(sz * 0.04 + Math.cos(-1.4) * sz * 0.25, sz * 0.35 + Math.sin(-1.4) * sz * 0.25, 2 * s, 0, Math.PI * 2); ctx.fill()
-    ctx.beginPath(); ctx.arc(sz * 0.04 + Math.cos(1.2) * sz * 0.25, sz * 0.35 + Math.sin(1.2) * sz * 0.25, 2 * s, 0, Math.PI * 2); ctx.fill()
-    // Bowstring (taut line, pulls back during attack)
-    const drawAmt = matk > 0 && matk < 10 ? (1 - matk / 10) * sz * 0.15 : 0
-    ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1 * s
-    ctx.beginPath()
-    ctx.moveTo(sz * 0.04 + Math.cos(-1.4) * sz * 0.25, sz * 0.35 + Math.sin(-1.4) * sz * 0.25)
-    ctx.quadraticCurveTo(sz * 0.04 - drawAmt, sz * 0.35, sz * 0.04 + Math.cos(1.2) * sz * 0.25, sz * 0.35 + Math.sin(1.2) * sz * 0.25)
-    ctx.stroke()
-    // Arrow on string (visible when bow is drawn)
-    if (matk > 0 && matk < 12) {
-      ctx.fillStyle = '#8d6e63'
-      ctx.fillRect(sz * 0.04 - drawAmt - sz * 0.2, sz * 0.33, sz * 0.25, 2 * s)
-      // Arrowhead
-      ctx.fillStyle = '#b0bec5'
-      ctx.beginPath(); ctx.moveTo(sz * 0.04 - drawAmt - sz * 0.2, sz * 0.33); ctx.lineTo(sz * 0.04 - drawAmt - sz * 0.25, sz * 0.34); ctx.lineTo(sz * 0.04 - drawAmt - sz * 0.2, sz * 0.35); ctx.fill()
+    ctx.save()
+    ctx.translate(wpnX, wpnY)
+    ctx.rotate(wpnRot)
+    ctx.globalAlpha = 0.9
+    ctx.drawImage(wpnImg, -wpnSize/2, -wpnSize/2, wpnSize, wpnSize)
+    // Rarity glow
+    if (eqWpn && eqWpn.rarity !== 'common' && eqWpn.rarity !== 'uncommon') {
+      ctx.globalAlpha = 0.25 + Math.sin(t*3)*0.1
+      ctx.shadowColor = eqWpn.rarityColor
+      ctx.shadowBlur = 6*s
+      ctx.drawImage(wpnImg, -wpnSize/2, -wpnSize/2, wpnSize, wpnSize)
+      ctx.shadowBlur = 0
     }
-  } else if (wid === 'paladin') {
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.8; ctx.fillRect(-sz*0.02, sz*0.2, sz*0.07, sz*0.7); ctx.globalAlpha = 1
-    ctx.fillStyle = d.armorTrim; ctx.fillRect(-sz*0.08, sz*0.18, sz*0.19, sz*0.1)
-    ctx.fillStyle = '#f1c40f'; ctx.fillRect(-sz*0.1, sz*0.22, sz*0.22, sz*0.04)
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(-sz*0.02, sz*0.88, sz*0.08, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1
-  } else if (wid === 'necromancer') {
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-sz*0.01, sz*0.2, sz*0.05, sz*0.6)
-    ctx.fillStyle = eqWpnColor; ctx.globalAlpha = 0.7; ctx.beginPath()
-    ctx.moveTo(sz*0.01, sz*0.18); ctx.quadraticCurveTo(sz*0.35, sz*0.0, sz*0.3, sz*0.25); ctx.lineTo(sz*0.1, sz*0.22); ctx.fill(); ctx.globalAlpha = 1
-    ctx.fillStyle = '#00e676'; ctx.beginPath(); ctx.arc(sz*0.2, sz*0.1, sz*0.04, 0, Math.PI*2); ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.restore()
   }
   ctx.restore()
 
