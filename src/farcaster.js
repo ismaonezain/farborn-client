@@ -168,28 +168,10 @@ export async function login() {
   }
 }
 
-// ─── Token Gate ─────────────────────────────────────────
+// ─── Token Gate (disabled — no hold requirement) ─────────
 export async function checkTokenGate() {
-  if (!walletAddress) {
-    tokenGateStatus = { hasAccess: false, checked: true, reason: 'No wallet' };
-    return tokenGateStatus;
-  }
-  try {
-    const tokenAddress = '0x4abD609B323ce6E7C0770E86d21E76BA00209DE2';
-    const calldata = '0x70a08231' + walletAddress.toLowerCase().replace('0x', '').padStart(64, '0');
-    const res = await fetch('https://mainnet.base.org', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: tokenAddress, data: calldata }, 'latest'] })
-    });
-    const data = await res.json();
-    const balance = BigInt(data.result || '0x0');
-    tokenGateStatus = { hasAccess: balance >= BigInt('1000000000000000000000'), checked: true, balance: Number(balance / BigInt('1000000000000000000')), gate: 1000, swapUrl: 'https://app.uniswap.org/swap?chain=base&inputCurrency=ETH&outputCurrency=0x4abD609B323ce6E7C0770E86d21E76BA00209DE2' };
-    return tokenGateStatus;
-  } catch (err) {
-    tokenGateStatus = { hasAccess: true, checked: true, error: err.message, bypass: true };
-    return tokenGateStatus;
-  }
+  tokenGateStatus = { hasAccess: true, checked: true, bypass: true };
+  return tokenGateStatus;
 }
 
 // ─── Price / Convert / Sync ─────────────────────────────
